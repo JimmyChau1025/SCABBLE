@@ -5,9 +5,8 @@
   <meta name="color-scheme" content="light only">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   
-  <!-- 手機桌面圖示設定 -->
-  <link rel="apple-touch-icon" href="./icon.png?v=2">
-  <link rel="icon" type="image/png" href="./icon.png?v=2">
+  <link rel="apple-touch-icon" href="./icon.png?v=3">
+  <link rel="icon" type="image/png" href="./icon.png?v=3">
   <link rel="manifest" href="./manifest.json">
 
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -73,25 +72,23 @@
       background-color: #EEF2FF !important;
     }
 
-    /* 連擊火焰燃燒動態特效 */
-    @keyframes flameFlicker {
-      0%, 100% { transform: scale(1) rotate(0deg); }
-      25% { transform: scale(1.08) rotate(-4deg); }
-      50% { transform: scale(0.96) rotate(3deg); }
-      75% { transform: scale(1.12) rotate(-2deg); }
+    /* 🔥 超炫酷動態燃燒火焰特效 🔥 */
+    @keyframes flameBlaze {
+      0% { transform: scale(1) rotate(-3deg); filter: drop-shadow(0 0 2px #f59e0b); }
+      50% { transform: scale(1.25) rotate(4deg) translateY(-2px); filter: drop-shadow(0 0 8px #ef4444); }
+      100% { transform: scale(1.05) rotate(-2deg); filter: drop-shadow(0 0 4px #f59e0b); }
     }
-    .flame-animated {
+    .flame-burn {
       display: inline-block;
-      animation: flameFlicker 0.75s ease-in-out infinite alternate;
-      transform-origin: 50% 80%;
+      animation: flameBlaze 0.45s infinite alternate ease-in-out;
+      transform-origin: 50% 90%;
     }
-    .combo-badge-glow {
-      box-shadow: 0 0 14px rgba(245, 158, 11, 0.55), inset 0 0 8px rgba(254, 243, 199, 0.8) !important;
-      animation: comboPulse 1.2s ease-in-out infinite alternate;
+    @keyframes glowPulse {
+      0% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+      100% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.85), inset 0 0 6px rgba(254, 240, 138, 0.9); }
     }
-    @keyframes comboPulse {
-      0% { transform: scale(1); }
-      100% { transform: scale(1.05); }
+    .combo-blaze-card {
+      animation: glowPulse 0.8s infinite alternate ease-in-out;
     }
   </style>
 </head>
@@ -179,24 +176,24 @@
 
   <!-- 遊戲進行畫面 (VIEW-GAME) -->
   <div id="view-game" class="hidden w-full max-w-md min-h-screen flex-col justify-between px-3 pt-3 pb-4">
-    <!-- 頂部狀態列 (題號放大 + 火焰動感 Combo) -->
+    <!-- 頂部狀態列 (顯眼大題號 + 燃燒 Combo 火焰) -->
     <header class="glass-card rounded-2xl px-3.5 py-2.5 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <button onclick="switchView('home')" class="bg-slate-200/90 text-slate-700 font-bold text-xs px-2.5 py-1.5 rounded-xl active:scale-95 transition">🏠 返回</button>
         
-        <!-- 放大突出的題號 -->
-        <div class="bg-indigo-600 text-white font-scrabble font-black px-3.5 py-1.5 rounded-xl text-sm shadow-sm tracking-wide">
+        <!-- 大字號加粗題號 -->
+        <div class="bg-indigo-600 text-white font-scrabble font-black px-3.5 py-1.5 rounded-xl text-base shadow-md tracking-wider">
           Q.<span id="q-index">1</span>/20
         </div>
 
         <!-- 燃燒動態 Combo 徽章 -->
-        <div id="combo-badge" class="hidden items-center gap-1 bg-gradient-to-r from-amber-100 to-amber-200 border-2 border-amber-400 text-amber-900 font-scrabble text-sm px-3 py-1 rounded-xl font-black shadow-sm combo-badge-glow">
-          <span class="flame-animated text-base">🔥</span><span class="tracking-tight">x<span id="combo-count">0</span></span>
+        <div id="combo-badge" class="hidden items-center gap-1.5 bg-gradient-to-r from-amber-100 via-amber-200 to-orange-200 border-2 border-amber-500 text-amber-950 font-scrabble text-sm px-3 py-1 rounded-xl font-black shadow-md combo-blaze-card">
+          <span class="flame-burn text-lg">🔥</span><span class="tracking-tight text-amber-950">x<span id="combo-count">0</span></span>
         </div>
       </div>
       <div class="text-right">
         <div class="text-[10px] text-slate-500 font-bold">SCORE</div>
-        <div id="score-display" class="font-scrabble text-lg font-bold text-indigo-700 leading-none">0</div>
+        <div id="score-display" class="font-scrabble text-xl font-black text-indigo-700 leading-none">0</div>
       </div>
     </header>
 
@@ -208,30 +205,33 @@
       <div id="tries-display" class="flex gap-0.5 text-sm">❤️❤️</div>
     </div>
 
-    <!-- 語境線索卡 -->
-    <section class="glass-card rounded-2xl p-3.5 shadow-md">
-      <div class="flex items-center justify-between mb-1">
+    <!-- 語境線索卡 (文字全面放大加粗) -->
+    <section class="glass-card rounded-2xl p-4 shadow-md">
+      <div class="flex items-center justify-between mb-1.5">
         <span id="word-pos" class="bg-indigo-100 text-indigo-800 font-scrabble font-bold text-xs px-2.5 py-0.5 rounded-md">adj.</span>
-        <span id="word-box-tag" class="bg-slate-200 text-slate-700 text-[11px] font-bold px-2 py-0.5 rounded-md">Box 1</span>
+        <span id="word-box-tag" class="bg-slate-200 text-slate-700 text-xs font-bold px-2 py-0.5 rounded-md">Box 1</span>
       </div>
-      <h2 id="word-meaning" class="text-base font-bold text-slate-800 mb-2">載入中...</h2>
-      <div class="bg-amber-50/90 border border-amber-200 rounded-xl p-2.5 mb-2">
-        <p id="sentence-en" class="font-scrabble text-sm text-slate-800 leading-relaxed"></p>
-        <p id="sentence-zh" class="text-xs text-slate-600 mt-1"></p>
+      <h2 id="word-meaning" class="text-lg font-black text-slate-800 mb-2.5">載入中...</h2>
+      
+      <!-- 例句展示區 (加強字級與對比度) -->
+      <div class="bg-amber-50/90 border border-amber-200 rounded-xl p-3 mb-2.5 shadow-inner">
+        <p id="sentence-en" class="font-scrabble text-base font-semibold text-slate-800 leading-relaxed"></p>
+        <p id="sentence-zh" class="text-sm font-medium text-slate-600 mt-1.5"></p>
       </div>
-      <div class="flex flex-col gap-2 text-xs bg-slate-100 rounded-xl p-2.5">
-        <div class="text-slate-700 leading-snug"><span class="text-indigo-600 font-bold">【搭配】</span><span id="collocation-hint"></span></div>
+
+      <div class="flex flex-col gap-2 text-sm bg-slate-100 rounded-xl p-2.5">
+        <div class="text-slate-800 font-medium leading-snug"><span class="text-indigo-600 font-bold">【搭配】</span><span id="collocation-hint"></span></div>
         <div class="flex justify-end pt-1 border-t border-slate-200">
-          <button id="btn-hint" onclick="useRandomHint()" class="bg-amber-100 border border-amber-400 text-amber-900 px-3 py-1.5 rounded-lg font-bold active:scale-95 shadow-sm">💡 隨機提示 (剩 2 次)</button>
+          <button id="btn-hint" onclick="useRandomHint()" class="bg-amber-100 border border-amber-400 text-amber-900 px-3 py-1.5 rounded-lg font-bold active:scale-95 shadow-sm text-xs">💡 隨機提示 (剩 2 次)</button>
         </div>
       </div>
     </section>
 
     <section class="my-2 flex flex-col items-center justify-center">
-      <button id="btn-audio-clue" onclick="useAudioClue()" class="mb-2.5 bg-white border-2 border-indigo-300 text-indigo-700 font-bold text-xs px-4 py-1.5 rounded-full shadow-sm active:scale-95 flex items-center gap-1.5">
+      <button id="btn-audio-clue" onclick="useAudioClue()" class="mb-2 bg-white border-2 border-indigo-300 text-indigo-700 font-bold text-xs px-4 py-1.5 rounded-full shadow-sm active:scale-95 flex items-center gap-1.5">
         <span>🔊 聽語境朗讀 (-25 分)</span>
       </button>
-      <div id="phrase-context" class="hidden text-xs font-scrabble font-bold tracking-wider text-indigo-800 bg-indigo-100 border border-indigo-300 px-3 py-0.5 rounded-full mb-2">
+      <div id="phrase-context" class="hidden text-xs font-scrabble font-bold tracking-wider text-indigo-800 bg-indigo-100 border border-indigo-300 px-3 py-0.5 rounded-full mb-1.5">
         PHRASE: <span id="phrase-mask-text"></span>
       </div>
       
@@ -248,15 +248,15 @@
       <div class="flex justify-between items-center mb-2 px-1">
         <span class="text-[11px] text-slate-500 font-bold">💡 點擊或直接拖曳字母磚排字 · 點棋盤格退回</span>
         <div class="flex gap-1.5">
-          <button onclick="shuffleRack()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg">🔀 洗牌</button>
-          <button onclick="clearBoard()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg">🧹 清空</button>
+          <button onclick="shuffleRack()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg active:scale-95">🔀 洗牌</button>
+          <button onclick="clearBoard()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg active:scale-95">🧹 清空</button>
         </div>
       </div>
       <div id="tile-rack" class="flex flex-wrap justify-center gap-2 min-h-[52px] py-1"></div>
     </section>
 
     <footer class="grid grid-cols-4 gap-2 pt-2">
-      <button onclick="backspaceSlot()" class="col-span-1 bg-white border-2 border-slate-300 text-slate-700 font-bold rounded-xl py-3 shadow-sm">⌫ 退格</button>
+      <button onclick="backspaceSlot()" class="col-span-1 bg-white border-2 border-slate-300 text-slate-700 font-bold rounded-xl py-3 shadow-sm active:scale-95">⌫ 退格</button>
       <button onclick="submitWord()" class="col-span-3 btn-primary-3d font-scrabble font-bold text-base tracking-wider rounded-xl py-3">SUBMIT 提交驗證</button>
     </footer>
   </div>
@@ -577,7 +577,6 @@ function renderClueCard() {
   audioBtn.innerHTML = `<span>🔊 聽語境朗讀 (-25 分)</span>`;
 }
 
-// 渲染棋盤格（單行、動態縮放、點擊退回）
 function renderBoard() {
   const container = document.getElementById('board-slots');
   container.innerHTML = '';
@@ -612,7 +611,6 @@ function renderBoard() {
   }
 }
 
-// 渲染手牌（採用 bubble.html 的實體跟手 translate3d 拖曳架構）
 function renderRack() {
   const container = document.getElementById('tile-rack');
   container.innerHTML = '';
