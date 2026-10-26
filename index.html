@@ -175,7 +175,7 @@
   </div>
 
   <!-- 遊戲進行畫面 (VIEW-GAME) -->
-  <div id="view-game" class="hidden w-full max-w-md min-h-screen flex-col justify-between px-3 pt-3 pb-4">
+  <div id="view-game" class="hidden w-full max-w-md h-[100dvh] max-h-[100dvh] overflow-hidden flex-col justify-between px-3 pt-2 pb-2">
     <!-- 頂部狀態列 (顯眼大題號 + 燃燒 Combo 火焰) -->
     <header class="glass-card rounded-2xl px-3.5 py-2.5 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
@@ -206,7 +206,7 @@
     </div>
 
     <!-- 語境線索卡 (文字全面放大加粗) -->
-    <section class="glass-card rounded-2xl p-4 shadow-md">
+    <section class="glass-card rounded-2xl p-2.5 shadow-sm">
       <div class="flex items-center justify-between mb-1.5">
         <span id="word-pos" class="bg-indigo-100 text-indigo-800 font-scrabble font-bold text-xs px-2.5 py-0.5 rounded-md">adj.</span>
         <span id="word-box-tag" class="bg-slate-200 text-slate-700 text-xs font-bold px-2 py-0.5 rounded-md">Box 1</span>
@@ -214,7 +214,7 @@
       <h2 id="word-meaning" class="text-lg font-black text-slate-800 mb-2.5">載入中...</h2>
       
       <!-- 例句展示區 (加強字級與對比度) -->
-      <div class="bg-amber-50/90 border border-amber-200 rounded-xl p-3 mb-2.5 shadow-inner">
+      <div class="bg-amber-50/90 border border-amber-200 rounded-xl p-2 mb-1.5 shadow-inner">
         <p id="sentence-en" class="font-scrabble text-base font-semibold text-slate-800 leading-relaxed"></p>
         <p id="sentence-zh" class="text-sm font-medium text-slate-600 mt-1.5"></p>
       </div>
@@ -227,7 +227,7 @@
       </div>
     </section>
 
-    <section class="my-2 flex flex-col items-center justify-center">
+    <section class="my-1 flex flex-col items-center justify-center">
       <button id="btn-audio-clue" onclick="useAudioClue()" class="mb-2 bg-white border-2 border-indigo-300 text-indigo-700 font-bold text-xs px-4 py-1.5 rounded-full shadow-sm active:scale-95 flex items-center gap-1.5">
         <span>🔊 聽語境朗讀 (-25 分)</span>
       </button>
@@ -255,7 +255,7 @@
       <div id="tile-rack" class="flex flex-wrap justify-center gap-2 min-h-[52px] py-1"></div>
     </section>
 
-    <footer class="grid grid-cols-4 gap-2 pt-2">
+    <footer class="grid grid-cols-4 gap-2 pt-1 pb-1">
       <button onclick="backspaceSlot()" class="col-span-1 bg-white border-2 border-slate-300 text-slate-700 font-bold rounded-xl py-3 shadow-sm active:scale-95">⌫ 退格</button>
       <button onclick="submitWord()" class="col-span-3 btn-primary-3d font-scrabble font-bold text-base tracking-wider rounded-xl py-3">SUBMIT 提交驗證</button>
     </footer>
