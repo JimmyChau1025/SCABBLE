@@ -72,7 +72,6 @@
       background-color: #EEF2FF !important;
     }
 
-    /* 🔥 超炫酷動態燃燒火焰特效 🔥 */
     @keyframes flameBlaze {
       0% { transform: scale(1) rotate(-3deg); filter: drop-shadow(0 0 2px #f59e0b); }
       50% { transform: scale(1.25) rotate(4deg) translateY(-2px); filter: drop-shadow(0 0 8px #ef4444); }
@@ -108,6 +107,7 @@
       </div>
       <div class="flex items-center gap-2">
         <div class="bg-amber-100 border border-amber-300 text-amber-800 font-scrabble font-bold text-xs px-2.5 py-1 rounded-full">🔥 <span id="home-streak">1</span> 天</div>
+        <button onclick="openModal('modal-backup')" class="w-9 h-9 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center text-sm shadow-sm active:scale-95" title="進度備份與還原">💾</button>
         <button onclick="toggleMute()" id="btn-mute" class="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm">🔊</button>
       </div>
     </header>
@@ -170,23 +170,21 @@
     <nav class="fixed bottom-0 left-0 right-0 bg-white/95 border-t border-slate-200 py-2 px-6 flex justify-around max-w-md mx-auto z-30">
       <button onclick="switchView('home')" class="flex flex-col items-center text-indigo-600 font-bold text-xs"><span class="text-lg">🏠</span>首頁</button>
       <button onclick="openModal('modal-stats')" class="flex flex-col items-center text-slate-500 font-medium text-xs"><span class="text-lg">📦</span>記憶箱</button>
-      <button onclick="startNewSession('normal')" class="flex flex-col items-center text-slate-500 font-medium text-xs"><span class="text-lg">🎮</span>立即開始</button>
+      <button onclick="openModal('modal-backup')" class="flex flex-col items-center text-slate-500 font-medium text-xs"><span class="text-lg">💾</span>備份還原</button>
     </nav>
   </div>
 
-  <!-- 遊戲進行畫面 (VIEW-GAME) -->
+  <!-- 遊戲進行畫面 (VIEW-GAME：緊湊適應各種手機螢幕，免滑動) -->
   <div id="view-game" class="hidden w-full max-w-md h-[100dvh] max-h-[100dvh] overflow-hidden flex-col justify-between px-3 pt-2 pb-2">
-    <!-- 頂部狀態列 (顯眼大題號 + 燃燒 Combo 火焰) -->
-    <header class="glass-card rounded-2xl px-3.5 py-2.5 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
+    <!-- 頂部狀態列 (無 Q 字大題號 + 燃燒火焰) -->
+    <header class="glass-card rounded-2xl px-3 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2">
         <button onclick="switchView('home')" class="bg-slate-200/90 text-slate-700 font-bold text-xs px-2.5 py-1.5 rounded-xl active:scale-95 transition">🏠 返回</button>
         
-        <!-- 大字號加粗題號 -->
         <div class="bg-indigo-600 text-white font-scrabble font-black px-3.5 py-1.5 rounded-xl text-base shadow-md tracking-wider">
-        <span id="q-index">1</span>/20
+          <span id="q-index">1</span>/20
         </div>
 
-        <!-- 燃燒動態 Combo 徽章 -->
         <div id="combo-badge" class="hidden items-center gap-1.5 bg-gradient-to-r from-amber-100 via-amber-200 to-orange-200 border-2 border-amber-500 text-amber-950 font-scrabble text-sm px-3 py-1 rounded-xl font-black shadow-md combo-blaze-card">
           <span class="flame-burn text-lg">🔥</span><span class="tracking-tight text-amber-950">x<span id="combo-count">0</span></span>
         </div>
@@ -197,7 +195,7 @@
       </div>
     </header>
 
-    <div class="my-1.5 flex items-center gap-2 px-1">
+    <div class="my-1 flex items-center gap-2 px-1">
       <div class="flex-1 bg-white/80 h-2.5 rounded-full overflow-hidden border border-slate-300">
         <div id="timer-bar" class="bg-gradient-to-r from-emerald-400 to-teal-500 h-full w-full transition-all duration-300"></div>
       </div>
@@ -205,59 +203,57 @@
       <div id="tries-display" class="flex gap-0.5 text-sm">❤️❤️</div>
     </div>
 
-    <!-- 語境線索卡 (文字全面放大加粗) -->
+    <!-- 語境線索卡 (微調 padding 確保小螢幕不溢出) -->
     <section class="glass-card rounded-2xl p-2.5 shadow-sm">
-      <div class="flex items-center justify-between mb-1.5">
+      <div class="flex items-center justify-between mb-1">
         <span id="word-pos" class="bg-indigo-100 text-indigo-800 font-scrabble font-bold text-xs px-2.5 py-0.5 rounded-md">adj.</span>
         <span id="word-box-tag" class="bg-slate-200 text-slate-700 text-xs font-bold px-2 py-0.5 rounded-md">Box 1</span>
       </div>
-      <h2 id="word-meaning" class="text-lg font-black text-slate-800 mb-2.5">載入中...</h2>
+      <h2 id="word-meaning" class="text-base font-black text-slate-800 mb-1.5">載入中...</h2>
       
-      <!-- 例句展示區 (加強字級與對比度) -->
       <div class="bg-amber-50/90 border border-amber-200 rounded-xl p-2 mb-1.5 shadow-inner">
-        <p id="sentence-en" class="font-scrabble text-base font-semibold text-slate-800 leading-relaxed"></p>
-        <p id="sentence-zh" class="text-sm font-medium text-slate-600 mt-1.5"></p>
+        <p id="sentence-en" class="font-scrabble text-sm font-semibold text-slate-800 leading-snug"></p>
+        <p id="sentence-zh" class="text-xs font-medium text-slate-600 mt-1"></p>
       </div>
 
-      <div class="flex flex-col gap-2 text-sm bg-slate-100 rounded-xl p-2.5">
+      <div class="flex flex-col gap-1.5 text-xs bg-slate-100 rounded-xl p-2">
         <div class="text-slate-800 font-medium leading-snug"><span class="text-indigo-600 font-bold">【搭配】</span><span id="collocation-hint"></span></div>
         <div class="flex justify-end pt-1 border-t border-slate-200">
-          <button id="btn-hint" onclick="useRandomHint()" class="bg-amber-100 border border-amber-400 text-amber-900 px-3 py-1.5 rounded-lg font-bold active:scale-95 shadow-sm text-xs">💡 隨機提示 (剩 2 次)</button>
+          <button id="btn-hint" onclick="useRandomHint()" class="bg-amber-100 border border-amber-400 text-amber-900 px-3 py-1 rounded-lg font-bold active:scale-95 shadow-sm text-xs">💡 隨機提示 (剩 2 次)</button>
         </div>
       </div>
     </section>
 
     <section class="my-1 flex flex-col items-center justify-center">
-      <button id="btn-audio-clue" onclick="useAudioClue()" class="mb-2 bg-white border-2 border-indigo-300 text-indigo-700 font-bold text-xs px-4 py-1.5 rounded-full shadow-sm active:scale-95 flex items-center gap-1.5">
+      <button id="btn-audio-clue" onclick="useAudioClue()" class="mb-1.5 bg-white border-2 border-indigo-300 text-indigo-700 font-bold text-xs px-4 py-1 rounded-full shadow-sm active:scale-95 flex items-center gap-1.5">
         <span>🔊 聽語境朗讀 (-25 分)</span>
       </button>
-      <div id="phrase-context" class="hidden text-xs font-scrabble font-bold tracking-wider text-indigo-800 bg-indigo-100 border border-indigo-300 px-3 py-0.5 rounded-full mb-1.5">
+      <div id="phrase-context" class="hidden text-xs font-scrabble font-bold tracking-wider text-indigo-800 bg-indigo-100 border border-indigo-300 px-3 py-0.5 rounded-full mb-1">
         PHRASE: <span id="phrase-mask-text"></span>
       </div>
       
-      <!-- 智慧單行置中棋盤格容器 -->
       <div class="w-full px-1 py-1 flex justify-center">
         <div id="board-slots" class="flex flex-row flex-nowrap items-center justify-center gap-1 max-w-full"></div>
       </div>
 
-      <div id="feedback-msg" class="h-5 mt-1 text-xs font-bold text-center text-rose-600"></div>
+      <div id="feedback-msg" class="h-4 text-xs font-bold text-center text-rose-600"></div>
     </section>
 
     <!-- 玩家手牌槽 -->
-    <section class="glass-card rounded-2xl p-3">
-      <div class="flex justify-between items-center mb-2 px-1">
+    <section class="glass-card rounded-2xl p-2.5">
+      <div class="flex justify-between items-center mb-1.5 px-1">
         <span class="text-[11px] text-slate-500 font-bold">💡 點擊或直接拖曳字母磚排字 · 點棋盤格退回</span>
         <div class="flex gap-1.5">
-          <button onclick="shuffleRack()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg active:scale-95">🔀 洗牌</button>
-          <button onclick="clearBoard()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg active:scale-95">🧹 清空</button>
+          <button onclick="shuffleRack()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-lg active:scale-95">🔀 洗牌</button>
+          <button onclick="clearBoard()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-lg active:scale-95">🧹 清空</button>
         </div>
       </div>
-      <div id="tile-rack" class="flex flex-wrap justify-center gap-2 min-h-[52px] py-1"></div>
+      <div id="tile-rack" class="flex flex-wrap justify-center gap-2 min-h-[50px] py-0.5"></div>
     </section>
 
     <footer class="grid grid-cols-4 gap-2 pt-1 pb-1">
-      <button onclick="backspaceSlot()" class="col-span-1 bg-white border-2 border-slate-300 text-slate-700 font-bold rounded-xl py-3 shadow-sm active:scale-95">⌫ 退格</button>
-      <button onclick="submitWord()" class="col-span-3 btn-primary-3d font-scrabble font-bold text-base tracking-wider rounded-xl py-3">SUBMIT 提交驗證</button>
+      <button onclick="backspaceSlot()" class="col-span-1 bg-white border-2 border-slate-300 text-slate-700 font-bold rounded-xl py-2.5 shadow-sm active:scale-95">⌫ 退格</button>
+      <button onclick="submitWord()" class="col-span-3 btn-primary-3d font-scrabble font-bold text-base tracking-wider rounded-xl py-2.5">SUBMIT 提交驗證</button>
     </footer>
   </div>
 
@@ -281,6 +277,39 @@
         </div>
       </div>
       <button onclick="nextQuestion()" class="btn-primary-3d w-full font-scrabble font-bold py-3 rounded-xl">NEXT 下一題 ➔</button>
+    </div>
+  </div>
+
+  <!-- 彈窗：進度備份與還原中心 (重裝 APP 免驚！) -->
+  <div id="modal-backup" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white border-2 border-indigo-200 rounded-3xl max-w-sm w-full p-5 shadow-2xl max-h-[88vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-base font-bold text-slate-800">💾 進度備份與還原中心</h3>
+        <button onclick="closeModal('modal-backup')" class="text-slate-400 font-bold text-lg px-2">✕</button>
+      </div>
+      <p class="text-xs text-slate-500 mb-3">
+        如果你需要解除安裝或更換手機，請預先產生備份碼。重裝後在此貼上即可 1 秒還原所有進度！
+      </p>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 mb-3 text-xs">
+        <div class="font-bold text-slate-700 mb-1.5">方式一：備份代碼（快速複製 / 貼上）</div>
+        <textarea id="backup-text-box" class="w-full h-20 p-2 text-[11px] font-mono border border-slate-300 rounded-xl bg-white resize-none" placeholder="點擊下方「產生備份碼」，或直接在此貼上備份碼點「還原」..."></textarea>
+        <div class="flex gap-2 mt-2">
+          <button onclick="exportBackupText()" class="flex-1 bg-indigo-100 text-indigo-700 font-bold py-2 rounded-xl text-xs active:scale-95">📋 產生並複製備份碼</button>
+          <button onclick="importBackupText()" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-xs shadow-sm active:scale-95">✅ 從文字碼還原</button>
+        </div>
+      </div>
+
+      <div class="bg-indigo-50/70 border border-indigo-200 rounded-2xl p-3 mb-3 text-xs">
+        <div class="font-bold text-indigo-900 mb-1.5">方式二：檔案備份與還原 (.json)</div>
+        <div class="flex gap-2">
+          <button onclick="downloadBackupFile()" class="flex-1 bg-white border border-indigo-300 text-indigo-700 font-bold py-2 rounded-xl text-xs shadow-sm active:scale-95">📥 下載備份檔</button>
+          <label class="flex-1 text-center bg-indigo-600 text-white font-bold py-2 rounded-xl text-xs shadow-sm active:scale-95 cursor-pointer">
+            📤 選取檔案還原
+            <input type="file" accept=".json" class="hidden" onchange="uploadBackupFile(event)">
+          </label>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -472,6 +501,99 @@ function getWordProgress(wKey) {
 function saveProgress() {
   localStorage.setItem('dse_scrabble_progress_v3', JSON.stringify(progressMap));
   localStorage.setItem('dse_scrabble_daily_v3', JSON.stringify(dailyStats));
+}
+
+// ==================== 進度備份與還原系統 ====================
+function createBackupPayload() {
+  return {
+    version: "3.0",
+    exportDate: new Date().toISOString(),
+    progressMap: progressMap,
+    dailyStats: dailyStats,
+    customCSV: localStorage.getItem('dse_scrabble_csv_vocab_v3')
+  };
+}
+
+function exportBackupText() {
+  const payload = createBackupPayload();
+  const textStr = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const box = document.getElementById('backup-text-box');
+  box.value = textStr;
+  box.select();
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(textStr).then(() => {
+      alert('✅ 進度備份碼已產生並複製到剪貼簿！請妥善保存。');
+    }).catch(() => {
+      alert('✅ 進度備份碼已產生！請手動全選複製。');
+    });
+  } else {
+    document.execCommand('copy');
+    alert('✅ 進度備份碼已產生並複製！');
+  }
+}
+
+function importBackupText() {
+  const raw = document.getElementById('backup-text-box').value.trim();
+  if (!raw) {
+    alert('請先在框內貼上進度備份碼！');
+    return;
+  }
+  try {
+    const jsonStr = decodeURIComponent(escape(atob(raw)));
+    const payload = JSON.parse(jsonStr);
+    applyRestoredData(payload);
+  } catch (err) {
+    alert('備份碼格式不正確，無法還原！');
+  }
+}
+
+function downloadBackupFile() {
+  const payload = createBackupPayload();
+  const jsonStr = JSON.stringify(payload, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateTag = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `VocabQuest_Progress_${dateTag}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function uploadBackupFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      applyRestoredData(data);
+    } catch (err) {
+      alert('備份檔案損毀或格式不正確！');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+  event.target.value = '';
+}
+
+function applyRestoredData(data) {
+  if (!data || typeof data !== 'object') return;
+  if (data.progressMap) {
+    progressMap = data.progressMap;
+    localStorage.setItem('dse_scrabble_progress_v3', JSON.stringify(progressMap));
+  }
+  if (data.dailyStats) {
+    dailyStats = data.dailyStats;
+    localStorage.setItem('dse_scrabble_daily_v3', JSON.stringify(dailyStats));
+  }
+  if (data.customCSV) {
+    localStorage.setItem('dse_scrabble_csv_vocab_v3', data.customCSV);
+  }
+  updateHomeUI();
+  closeModal('modal-backup');
+  alert('🎉 進度已成功還原！所有記憶箱與分數已完全同步！');
 }
 
 function buildSessionQueue(mode = 'normal', count = 20) {
