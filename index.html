@@ -166,6 +166,7 @@
       <div id="tries-display" class="flex gap-0.5 text-sm">❤️❤️</div>
     </div>
 
+    <!-- 語境線索卡 (已升級上下分層排版，防文字被遮擋) -->
     <section class="glass-card rounded-2xl p-3.5 shadow-md">
       <div class="flex items-center justify-between mb-1">
         <span id="word-pos" class="bg-indigo-100 text-indigo-800 font-scrabble font-bold text-xs px-2.5 py-0.5 rounded-md">adj.</span>
@@ -176,9 +177,12 @@
         <p id="sentence-en" class="font-scrabble text-sm text-slate-800 leading-relaxed"></p>
         <p id="sentence-zh" class="text-xs text-slate-600 mt-1"></p>
       </div>
-      <div class="flex items-center justify-between text-xs bg-slate-100 rounded-xl px-2.5 py-1.5">
-        <div class="truncate text-slate-700"><span class="text-indigo-600 font-bold">【搭配】</span><span id="collocation-hint"></span></div>
-        <button id="btn-hint" onclick="useRandomHint()" class="ml-2 shrink-0 bg-amber-100 border border-amber-400 text-amber-900 px-2.5 py-1 rounded-lg font-bold active:scale-95">💡 提示 (剩 2 次)</button>
+      <!-- 改為上下兩行排版，徹底解決擠壓遮擋問題 -->
+      <div class="flex flex-col gap-2 text-xs bg-slate-100 rounded-xl p-2.5">
+        <div class="text-slate-700 leading-snug"><span class="text-indigo-600 font-bold">【搭配】</span><span id="collocation-hint"></span></div>
+        <div class="flex justify-end pt-1 border-t border-slate-200">
+          <button id="btn-hint" onclick="useRandomHint()" class="bg-amber-100 border border-amber-400 text-amber-900 px-3 py-1.5 rounded-lg font-bold active:scale-95 shadow-sm">💡 隨機提示 (剩 2 次)</button>
+        </div>
       </div>
     </section>
 
@@ -357,7 +361,6 @@ async function initApp() {
     dailyStats = { date: todayStr, solved: 0, rounds: 0 };
   }
 
-  // 從 vocab.json 讀取 548 詞
   try {
     const res = await fetch('./vocab.json');
     if (res.ok) {
@@ -844,7 +847,6 @@ function handleCSVUpload(event) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function(e) {
-    // CSV parser logic if needed
     alert('已成功讀取檔案！');
   };
   reader.readAsText(file, 'UTF-8');
@@ -881,7 +883,7 @@ function speakWord() {
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(currentItem.display);
   u.lang = 'en-GB'; u.rate = 0.95;
-  window.speechSynthesis.sdk ? '' : window.speechSynthesis.speak(u);
+  window.speechSynthesis.speak(u);
 }
 
 function speakSentence() {
