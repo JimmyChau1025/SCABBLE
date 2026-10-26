@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#E8E6F5">
+  <title>VOCAB QUEST - DSE 5** Scrabble Master</title>
+
+  <!-- Tailwind CSS & Google Fonts & Confetti -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            scrabble: ['Fredoka', 'Quicksand', 'sans-serif'],
+            body: ['Quicksand', 'Noto Sans TC', 'sans-serif']
+          },
+          colors: {
+            sage: { 50: '#F4F7F5', 100: '#E4EDE7', 200: '#C9DCD0', 300: '#A7C4B2', 500: '#689B7E' },
+            lavender: { 50: '#F6F5FC', 100: '#ECE9F9', 200: '#D9D3F3', 300: '#BDB3EA', 500: '#8977CE' },
+            cream: { 50: '#FFFDF9', 100: '#FEF9EE', 200: '#FDF1D7', 300: '#F8E3B6' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background-color: #E2ECE6;
+      font-family: 'Quicksand', 'Noto Sans TC', sans-serif;
+      color: #334155;
+      overflow-x: hidden;
+    }
+
+    /* 柔和馬卡龍漸層底色與環境光 */
+    .bg-pastel-mesh {
+      background: 
+        radial-gradient(at 10% 10%, rgba(201, 220, 208, 0.85) 0px, transparent 55%),
+        radial-gradient(at 90% 15%, rgba(217, 211, 243, 0.9) 0px, transparent 55%),
+        radial-gradient(at 80% 85%, rgba(253, 241, 215, 0.8) 0px, transparent 55%),
+        radial-gradient(at 15% 90%, rgba(199, 219, 237, 0.85) 0px, transparent 55%),
+        linear-gradient(160deg, #EDF4EE 0%, #E8E6F5 50%, #F5F1E8 100%);
+    }
+
+    /* 柔和毛玻璃質感 */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1.5px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 10px 30px -6px rgba(100, 116, 139, 0.12), 0 2px 6px rgba(100, 116, 139, 0.04);
+    }
+    
+    .glass-card-subtle {
+      background: rgba(255, 255, 255, 0.58);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+    }
+
+    /* Scrabble 暖木色立體字母方塊 */
+    .scrabble-tile {
+      background: linear-gradient(145deg, #FFF7EA, #FCE5BE);
+      color: #533313;
+      border-radius: 10px;
+      border-bottom: 3.5px solid #D7A25D;
+      border-right: 1.5px solid #E5B473;
+      box-shadow: 0 4px 6px -1px rgba(93, 59, 24, 0.22);
+      position: relative;
+      font-family: 'Fredoka', sans-serif;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.12s ease, opacity 0.15s ease;
+    }
+    .scrabble-tile:active {
+      transform: translateY(2px) scale(0.96);
+      border-bottom-width: 2px;
+    }
+    .scrabble-tile .score {
+      position: absolute;
+      bottom: 2px;
+      right: 3px;
+      font-size: 8px;
+      font-weight: 600;
+      opacity: 0.75;
+      line-height: 1;
+    }
+    .tile-used {
+      opacity: 0.24;
+      pointer-events: none;
+      transform: scale(0.92);
+      border-bottom-width: 2px;
+      box-shadow: none;
+    }
+
+    /* Wordle 翻牌動畫與狀態色 */
+    @keyframes flipTile {
+      0% { transform: rotateX(0deg); }
+      50% { transform: rotateX(90deg); }
+      100% { transform: rotateX(0deg); }
+    }
+    .animate-flip {
+      animation: flipTile 0.42s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    .slot-correct {
+      background: linear-gradient(145deg, #34D399, #10B981) !important;
+      color: #FFFFFF !important;
+      border-color: #059669 !important;
+      border-bottom: 3.5px solid #047857 !important;
+    }
+    .slot-present {
+      background: linear-gradient(145deg, #FBBF24, #F59E0B) !important;
+      color: #FFFFFF !important;
+      border-color: #D97706 !important;
+      border-bottom: 3.5px solid #B45309 !important;
+    }
+    .slot-absent {
+      background: linear-gradient(145deg, #94A3B8, #64748B) !important;
+      color: #F8FAFC !important;
+      border-color: #475569 !important;
+      border-bottom: 3.5px solid #334155 !important;
+    }
+
+    /* 3D 彈嫩主按鈕 (Juicy 3D Button) */
+    .btn-3d-primary {
+      background: linear-gradient(180deg, #9F8FE4 0%, #7C66D8 100%);
+      border-bottom: 5px solid #5B44B3;
+      box-shadow: 0 10px 20px -3px rgba(124, 102, 216, 0.38), inset 0 2px 2px rgba(255, 255, 255, 0.4);
+      transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .btn-3d-primary:active {
+      transform: translateY(3px);
+      border-bottom-width: 2px;
+      box-shadow: 0 4px 10px -2px rgba(124, 102, 216, 0.3);
+    }
+
+    .btn-3d-mint {
+      background: linear-gradient(180deg, #81C79F 0%, #5EA980 100%);
+      border-bottom: 4px solid #458763;
+      box-shadow: 0 6px 14px -2px rgba(94, 169, 128, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+    }
+    .btn-3d-mint:active {
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+    }
+
+    /* 震動與燃燒光暈 */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .animate-shake {
+      animation: shake 0.35s ease;
+    }
+
+    .on-fire-glow {
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.45), inset 0 0 10px rgba(249, 115, 22, 0.2);
+      border-color: #FB923C !important;
+    }
+
+    @keyframes dangerPulse {
+      0%, 100% { box-shadow: inset 0 0 0px rgba(239, 68, 68, 0); }
+      50% { box-shadow: inset 0 0 30px rgba(239, 68, 68, 0.28); }
+    }
+    .danger-screen {
+      animation: dangerPulse 0.8s infinite;
+    }
+
+    /* 懸浮微動動畫 */
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-5px) rotate(1.2deg); }
+    }
+    .animate-float {
+      animation: floatSlow 4.5s ease-in-out infinite;
+    }
+    .animate-float-delayed {
+      animation: floatSlow 5s ease-in-out 1.5s infinite;
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-pastel-mesh min-h-screen flex items-center justify-center p-0 sm:p-4 select-none">
+
+  <!-- 手機主框架容器 (Mobile App Viewport) -->
+  <div id="app-container" class="relative w-full max-w-[430px] h-[100dvh] sm:h-[844px] bg-white/40 sm:rounded-[40px] shadow-2xl flex flex-col justify-between overflow-hidden sm:border-[6px] sm:border-white/80">
+
+    <!-- 背景動態裝飾植物葉片與微星光 (SVG) -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0">
+      <svg class="absolute -top-6 -left-8 w-44 h-44 text-sage-300/40 transform -rotate-12" fill="currentColor" viewBox="0 0 100 100">
+        <path d="M20,90 Q50,60 55,10 Q65,45 85,40 Q60,65 50,90 Z" opacity="0.6"/>
+        <circle cx="35" cy="40" r="14" fill="#C9DCD0" opacity="0.4"/>
+      </svg>
+      <svg class="absolute top-1/3 -right-10 w-48 h-48 text-lavender-300/35 transform rotate-45" fill="currentColor" viewBox="0 0 100 100">
+        <path d="M10,80 Q40,50 60,15 Q65,45 88,42 Q55,65 35,85 Z" opacity="0.5"/>
+      </svg>
+      <div class="absolute top-24 right-10 text-amber-300/70 text-lg animate-float">✦</div>
+      <div class="absolute top-48 left-8 text-lavender-400/60 text-sm animate-float-delayed">★</div>
+      <div class="absolute bottom-56 right-8 text-sage-500/50 text-base animate-float">✧</div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: 首頁畫面 (HOME VIEW)               -->
+    <!-- ========================================== -->
+    <div id="view-home" class="relative z-10 w-full h-full flex flex-col justify-between overflow-hidden">
+      
+      <!-- 頂部狀態列 -->
+      <header class="px-5 pt-4 pb-2">
+        <div class="glass-card rounded-2xl p-2.5 flex items-center justify-between shadow-sm">
+          <div class="flex items-center gap-2.5 cursor-pointer" onclick="openProfileModal()">
+            <div class="relative">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-lavender-300 to-sage-200 p-0.5 shadow-inner">
+                <div class="w-full h-full bg-white/90 rounded-[10px] flex items-center justify-center text-lg">
+                  🎓
+                </div>
+              </div>
+              <div class="absolute -bottom-1 -right-1 bg-amber-400 text-amber-950 font-scrabble text-[9px] font-bold px-1 rounded-full border border-white">
+                Lv.12
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center gap-1">
+                <span class="font-scrabble font-bold text-xs text-slate-700">Word Explorer</span>
+                <span class="text-[10px] text-indigo-500">▾</span>
+              </div>
+              <div class="text-[10px] text-slate-400 font-medium tracking-tight">DSE 5** Target</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div class="bg-amber-50/90 border border-amber-200/80 px-2 py-1 rounded-xl flex items-center gap-1 shadow-xs">
+              <span class="text-xs">🔥</span>
+              <span class="font-scrabble font-bold text-xs text-amber-800" id="home-streak-days">7</span>
+              <span class="text-[10px] text-amber-600 font-medium">天</span>
+            </div>
+            <button onclick="toggleAudio()" class="w-8 h-8 rounded-xl bg-white/80 hover:bg-white active:scale-95 border border-slate-200 flex items-center justify-center text-sm text-slate-600 transition-all shadow-xs" title="切換音效">
+              <span class="sound-icon-display">🔊</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- 主內容滾動區 -->
+      <main class="flex-1 px-5 py-2 flex flex-col justify-between overflow-y-auto no-scrollbar">
+        <!-- Scrabble 拼磚標題 -->
+        <section class="text-center my-1">
+          <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-indigo-50/90 border border-indigo-200/70 text-indigo-600 font-scrabble text-[11px] font-bold tracking-wide shadow-xs mb-2">
+            <span>✨</span>
+            <span>DSE 5** VOCABULARY MASTER</span>
+            <span>✨</span>
+          </div>
+
+          <div class="flex flex-col items-center gap-1.5">
+            <div class="flex items-center justify-center gap-1.5 animate-float">
+              <div class="scrabble-tile w-9 h-11 text-xl">V<span class="score">4</span></div>
+              <div class="scrabble-tile w-9 h-11 text-xl">O<span class="score">1</span></div>
+              <div class="scrabble-tile w-9 h-11 text-xl">C<span class="score">3</span></div>
+              <div class="scrabble-tile w-9 h-11 text-xl">A<span class="score">1</span></div>
+              <div class="scrabble-tile w-9 h-11 text-xl">B<span class="score">3</span></div>
+            </div>
+            <div class="flex items-center justify-center gap-1.5 animate-float-delayed">
+              <div class="scrabble-tile w-9 h-11 text-xl">Q<span class="score">10</span></div>
+              <div class="scrabble-tile w-9 h-11 text-xl">U<span class="score">1</span></div>
+              <div class="scrabble-tile w-9 h-11 text-xl">E<span class="score">1</span></div>
+              <div class="scrabble-tile w-9 h-11 text-xl">S<span class="score">1</span></div>
+              <div class="scrabble-tile w-9 h-11 text-xl">T<span class="score">1</span></div>
+            </div>
+          </div>
+          <p class="text-xs text-slate-500 font-medium mt-2">
+            語境解謎 ✕ 拼字推理 ✕ 548 核心考試詞
+          </p>
+        </section>
+
+        <!-- 核心挑戰英雄卡片 -->
+        <section class="glass-card rounded-3xl p-4 my-2 relative overflow-hidden border-2 border-white/90 shadow-lg">
+          <div class="flex items-center justify-between mb-2.5">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-xs">
+                ⚡
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-800">今日記憶鞏固進度</div>
+                <div class="text-[10px] text-slate-500" id="home-rounds-note">今日已完成 0 回合 · 隨時可多玩</div>
+              </div>
+            </div>
+            <span class="font-scrabble font-bold text-xs text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              今日已解 <span id="home-daily-solved">0</span> 詞
+            </span>
+          </div>
+
+          <!-- 進度條 (超過 20 詞持續累積無上限) -->
+          <div class="w-full bg-slate-200/70 h-2.5 rounded-full overflow-hidden p-0.5 mb-3 border border-white">
+            <div id="home-daily-bar" class="h-full bg-gradient-to-r from-emerald-400 via-teal-400 to-indigo-400 rounded-full transition-all duration-700" style="width: 25%;"></div>
+          </div>
+
+          <!-- 待複習提示 -->
+          <div class="flex items-center justify-between bg-white/70 rounded-xl p-2.5 mb-3.5 border border-slate-100 text-xs">
+            <div class="flex items-center gap-1.5 text-slate-600">
+              <span>📦</span>
+              <span>待攻堅生詞/弱項：</span>
+              <b class="text-rose-500 font-scrabble" id="home-weak-count">18</b>
+              <span>詞</span>
+            </div>
+            <button onclick="openBoxStatsModal()" class="text-indigo-600 font-bold text-[11px] hover:underline flex items-center">
+              查看箱子 ➔
+            </button>
+          </div>
+
+          <!-- 3D 核心開始按鈕：直接切換進入遊戲 -->
+          <button onclick="startChallengeSession('normal')" class="btn-3d-primary w-full py-3.5 rounded-2xl text-white flex items-center justify-center gap-2 font-scrabble text-base font-bold tracking-wide active:scale-98 relative group">
+            <span class="text-xl group-hover:scale-110 transition-transform">🚀</span>
+            <span>開始今日挑戰 (20 題)</span>
+            <span class="absolute right-4 text-[11px] font-normal opacity-80 tracking-tight">約 5 分鐘</span>
+          </button>
+        </section>
+
+        <!-- 四宮格選單 -->
+        <section class="grid grid-cols-2 gap-2.5 my-1">
+          <div onclick="openBoxStatsModal()" class="glass-card-subtle bg-white/60 hover:bg-white/80 active:scale-95 p-3 rounded-2xl border border-white/80 flex flex-col justify-between cursor-pointer transition-all shadow-xs">
+            <div class="flex items-center justify-between mb-1">
+              <div class="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center text-sm shadow-xs">📚</div>
+              <span class="font-scrabble text-[10px] font-bold text-indigo-700 bg-indigo-50/90 px-1.5 py-0.5 rounded-md" id="home-total-badge">548 詞</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-800">詞彙圖鑑庫</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">Leitner 五級箱分佈</div>
+            </div>
+          </div>
+
+          <div onclick="startChallengeSession('weak')" class="glass-card-subtle bg-white/60 hover:bg-white/80 active:scale-95 p-3 rounded-2xl border border-white/80 flex flex-col justify-between cursor-pointer transition-all shadow-xs">
+            <div class="flex items-center justify-between mb-1">
+              <div class="w-8 h-8 rounded-xl bg-rose-100 flex items-center justify-center text-sm shadow-xs">🔥</div>
+              <span class="font-scrabble text-[10px] font-bold text-rose-600 bg-rose-50/90 px-1.5 py-0.5 rounded-md">弱項加練</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-800">錯題特訓模式</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">聚焦 Box 1-2 攻堅</div>
+            </div>
+          </div>
+
+          <div onclick="startChallengeSession('colloc')" class="glass-card-subtle bg-white/60 hover:bg-white/80 active:scale-95 p-3 rounded-2xl border border-white/80 flex flex-col justify-between cursor-pointer transition-all shadow-xs">
+            <div class="flex items-center justify-between mb-1">
+              <div class="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-sm shadow-xs">⚡</div>
+              <span class="font-scrabble text-[10px] font-bold text-amber-700 bg-amber-50/90 px-1.5 py-0.5 rounded-md">Combo</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-800">搭配詞連環扣</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">Collocations 特訓</div>
+            </div>
+          </div>
+
+          <div onclick="openCsvManageModal()" class="glass-card-subtle bg-white/60 hover:bg-white/80 active:scale-95 p-3 rounded-2xl border border-white/80 flex flex-col justify-between cursor-pointer transition-all shadow-xs">
+            <div class="flex items-center justify-between mb-1">
+              <div class="w-8 h-8 rounded-xl bg-teal-100 flex items-center justify-center text-sm shadow-xs">⚙️</div>
+              <span class="font-scrabble text-[10px] font-bold text-teal-700 bg-teal-50/90 px-1.5 py-0.5 rounded-md">CSV</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-800">題庫管理</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">更新 Excel / CSV 表</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 每日 Tip -->
+        <footer class="my-1.5">
+          <div class="bg-white/50 border border-white/80 rounded-2xl p-2.5 flex items-center gap-2">
+            <span class="text-base">💡</span>
+            <p class="text-[11px] text-slate-600 leading-tight">
+              <span class="font-bold text-indigo-700">DSE 寫作 Tip:</span> 善用 <code class="text-slate-800 font-semibold">substantial</code> 替換 <code class="text-slate-400">a lot of</code>，語氣更顯地道客觀！
+            </p>
+          </div>
+        </footer>
+      </main>
+
+      <!-- 底部導航 Bar -->
+      <nav class="px-6 py-2.5 bg-white/75 backdrop-blur-md border-t border-white/80 flex justify-around items-center">
+        <button class="flex flex-col items-center gap-0.5 text-indigo-600 font-bold" onclick="playNavTone()">
+          <span class="text-lg">🏠</span>
+          <span class="text-[10px]">首頁</span>
+        </button>
+        <button class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-600" onclick="openBoxStatsModal()">
+          <span class="text-lg">📦</span>
+          <span class="text-[10px]">記憶箱</span>
+        </button>
+        <button class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-600" onclick="openAchievementsModal()">
+          <span class="text-lg">🏆</span>
+          <span class="text-[10px]">成就</span>
+        </button>
+        <button class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-600" onclick="openCsvManageModal()">
+          <span class="text-lg">⚙️</span>
+          <span class="text-[10px]">設定</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: 遊戲進行畫面 (GAMEPLAY VIEW)       -->
+    <!-- ========================================== -->
+    <div id="view-game" class="hidden relative z-10 w-full h-full flex-col justify-between px-3 pt-3 pb-4 overflow-hidden">
+      
+      <!-- 遊戲頂部工具列 -->
+      <header class="flex items-center justify-between glass-card rounded-2xl px-3 py-2 shadow-sm">
+        <div class="flex items-center gap-2">
+          <!-- 回首頁按鈕 -->
+          <button onclick="confirmExitGame()" class="w-8 h-8 rounded-xl bg-white/90 hover:bg-white active:scale-95 border border-slate-200 flex items-center justify-center text-sm shadow-xs" title="返回主頁">
+            🏠
+          </button>
+          <!-- 題目序號 -->
+          <div class="bg-indigo-600 text-white font-scrabble font-bold px-2.5 py-1 rounded-xl text-xs shadow-xs">
+            Q.<span id="game-q-idx">1</span>/20
+          </div>
+          <!-- 連擊燃燒徽章 -->
+          <div id="game-combo-badge" class="hidden bg-orange-500/20 border border-orange-400 text-orange-600 font-scrabble text-xs px-2 py-0.5 rounded-lg font-bold animate-bounce">
+            🔥 x<span id="game-combo-val">0</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+          <div class="text-right">
+            <div class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">SCORE</div>
+            <div id="game-score-display" class="font-scrabble text-base font-bold text-amber-600 leading-none">0</div>
+          </div>
+          <button onclick="toggleAudio()" class="w-8 h-8 rounded-xl bg-white/80 active:scale-95 border border-slate-200 flex items-center justify-center text-xs shadow-xs">
+            <span class="sound-icon-display">🔊</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- 倒數時間條 + 嘗試機會 Hearts -->
+      <div class="mt-2 flex items-center gap-2.5 px-1">
+        <div class="flex-1 bg-white/80 h-2.5 rounded-full overflow-hidden border border-white/90 shadow-inner">
+          <div id="game-timer-bar" class="bg-gradient-to-r from-emerald-400 to-teal-400 h-full w-full transition-all duration-300"></div>
+        </div>
+        <div id="game-timer-text" class="font-scrabble text-xs font-bold text-slate-600 w-8 text-right">40s</div>
+        <div id="game-tries-display" class="flex gap-1 text-sm" title="剩餘嘗試次數">
+          <span>❤️</span><span>❤️</span>
+        </div>
+      </div>
+
+      <!-- 語境線索卡 (Clue Card) -->
+      <section id="game-clue-card" class="glass-card rounded-2xl p-3 shadow-md my-1.5 flex flex-col justify-between transition-all duration-300">
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center gap-1.5">
+              <span id="game-word-pos" class="bg-indigo-50 border border-indigo-200 text-indigo-700 font-scrabble text-[11px] px-2 py-0.5 rounded-md font-bold">adj.</span>
+              <span id="game-box-tag" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md font-medium">Box 1 · 新詞</span>
+            </div>
+            <span class="text-[10px] text-slate-400 font-medium">HKDSE Exam Vocabulary</span>
+          </div>
+
+          <!-- 中文核心詞義 -->
+          <h2 id="game-word-meaning" class="text-base font-bold text-slate-800 mb-1.5 leading-snug">
+            實用的、實際的
+          </h2>
+
+          <!-- 英文挖空例句 + 中文翻譯 -->
+          <div class="bg-white/80 border border-slate-100 rounded-xl p-2.5 mb-1.5 shadow-inner">
+            <p id="game-sentence-en" class="font-scrabble text-[13px] text-slate-700 leading-relaxed tracking-wide">
+              She gained <span class="text-indigo-600 font-bold underline decoration-dashed">_________</span> experience during her internship.
+            </p>
+            <p id="game-sentence-zh" class="text-[11px] text-slate-500 mt-1">
+              她在實習期間獲得了實務經驗。
+            </p>
+          </div>
+        </div>
+
+        <!-- 搭配詞提示欄與 2 次隨機提示按鈕 -->
+        <div class="flex items-center justify-between text-xs bg-slate-50/80 rounded-xl px-2.5 py-1.5 border border-slate-200/60">
+          <div class="truncate text-slate-600 text-[11px]">
+            <span class="text-indigo-600 font-bold">【搭配】</span>
+            <span id="game-collocation-hint">________ experience (實務經驗)</span>
+          </div>
+          <button id="btn-game-hint" onclick="useRandomHint()" class="ml-2 shrink-0 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 px-2.5 py-1 rounded-xl text-[11px] font-bold active:scale-95 shadow-2xs transition-all flex items-center gap-1">
+            <span id="hint-btn-label">💡 隨機揭示 (剩 2 次)</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 語境聽力朗讀 (正中間扣分項) -->
+      <div class="flex justify-center my-1">
+        <button id="btn-listen-clue" onclick="useAudioClue()" class="glass-card-subtle bg-white/80 hover:bg-white active:scale-95 border border-indigo-200/80 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-xs transition-all group">
+          <span class="text-indigo-600 text-sm group-hover:scale-110 transition-transform">🔊</span>
+          <span class="font-scrabble font-bold text-xs text-slate-700">聽語境朗讀</span>
+          <span class="text-[10px] font-bold text-rose-500 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full">-25 分</span>
+        </button>
+      </div>
+
+      <!-- Scrabble 棋盤區 (Target Slots) -->
+      <section class="my-auto py-1 flex flex-col items-center justify-center">
+        <!-- 片語遮罩 -->
+        <div id="game-phrase-box" class="hidden text-[11px] font-scrabble tracking-widest text-teal-800 bg-teal-50 border border-teal-200 px-3 py-0.5 rounded-full mb-1.5">
+          PHRASE: <span id="game-phrase-mask"></span>
+        </div>
+
+        <!-- 棋盤空格容器 -->
+        <div id="game-board-slots" class="flex flex-wrap justify-center gap-1.5 px-1 max-w-full">
+          <!-- JS 動態生成 -->
+        </div>
+
+        <div id="game-feedback-msg" class="h-4 mt-1 text-[11px] font-bold text-center tracking-wide text-amber-700"></div>
+      </section>
+
+      <!-- 玩家手牌槽 (Scrabble Rack) -->
+      <section class="glass-card rounded-2xl p-2.5 shadow-inner mb-1.5">
+        <div class="flex justify-between items-center mb-1.5 px-1">
+          <span class="text-[10px] text-slate-500 font-medium">點字母填入 · 點棋盤格退回</span>
+          <div class="flex gap-1.5">
+            <button onclick="shuffleRack()" class="text-xs bg-white hover:bg-slate-50 active:scale-95 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
+              🔀 洗牌
+            </button>
+            <button onclick="clearBoard()" class="text-xs bg-white hover:bg-slate-50 active:scale-95 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
+              🧹 清空
+            </button>
+          </div>
+        </div>
+
+        <!-- 字母手牌 -->
+        <div id="game-tile-rack" class="flex flex-wrap justify-center gap-1.5 min-h-[50px] py-1">
+          <!-- JS 動態生成 -->
+        </div>
+      </section>
+
+      <!-- 底部控制按鈕 -->
+      <footer class="grid grid-cols-4 gap-2">
+        <button onclick="backspaceSlot()" class="col-span-1 bg-white border border-slate-300 active:bg-slate-100 text-slate-700 font-bold rounded-xl py-3 flex items-center justify-center shadow-xs">
+          ⌫ 退格
+        </button>
+        <button id="btn-game-submit" onclick="submitWord()" class="btn-3d-primary col-span-3 text-white font-scrabble font-bold text-base tracking-wider rounded-xl py-3">
+          SUBMIT 提交驗證
+        </button>
+      </footer>
+
+    </div>
+
+  </div>
+
+  <!-- ==================== 彈窗 1：單題過關詳解與 Combo 獎勵 ==================== -->
+  <div id="modal-detail" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white/95 border-2 border-white rounded-3xl max-w-sm w-full p-5 shadow-2xl animate-fade-in">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <span id="detail-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+            ✓ SPELL MASTERED! +120
+          </span>
+          <h3 id="detail-word" class="font-scrabble text-2xl font-bold text-slate-800 mt-1.5 tracking-wide">PRACTICAL</h3>
+        </div>
+        <button onclick="speakWord()" class="bg-indigo-50 border border-indigo-200 text-indigo-700 p-2.5 rounded-2xl active:scale-95 shadow-xs">
+          🔊
+        </button>
+      </div>
+
+      <p id="detail-meaning" class="text-xs text-amber-800 font-bold mb-2.5">adj. 實用的、實際的</p>
+
+      <div class="space-y-1.5 text-xs bg-slate-50 rounded-2xl p-3 border border-slate-200 mb-3.5">
+        <div>
+          <span class="text-indigo-600 font-bold">【詞性變化】</span>
+          <span id="detail-deriv" class="text-slate-700 ml-1">practically (adv.) 實際上</span>
+        </div>
+        <div>
+          <span class="text-emerald-700 font-bold">【高頻搭配】</span>
+          <span id="detail-colloc" class="text-slate-700 ml-1">practical experience 實務經驗</span>
+        </div>
+        <div class="pt-1 border-t border-slate-200">
+          <p id="detail-se" class="text-slate-800 font-medium leading-relaxed"></p>
+          <p id="detail-sz" class="text-slate-500 mt-0.5"></p>
+        </div>
+      </div>
+
+      <!-- 快問快答 Bonus -->
+      <div id="detail-bonus-quiz" class="bg-amber-50/90 border border-amber-200 rounded-2xl p-2.5 mb-3.5">
+        <div class="text-[11px] font-bold text-amber-900 mb-1.5">⚡ 記憶反芻 Bonus (+50 分)：此詞掌握狀態？</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="claimBonus(true)" class="bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs py-2 rounded-xl font-bold active:scale-95">
+            👍 完全掌握 (升箱)
+          </button>
+          <button onclick="claimBonus(false)" class="bg-amber-100 border border-amber-300 text-amber-900 text-xs py-2 rounded-xl font-bold active:scale-95">
+            📌 需再複習 (留箱)
+          </button>
+        </div>
+      </div>
+
+      <button onclick="nextQuestion()" class="btn-3d-primary w-full text-white font-scrabble font-bold py-3 rounded-xl">
+        NEXT 下一題 ➔
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== 彈窗 2：20 題回合完成結算畫面 ==================== -->
+  <div id="modal-summary" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-white/95 border-2 border-indigo-200 rounded-3xl max-w-sm w-full p-5 shadow-2xl text-center">
+      <div class="text-4xl mb-1">🏆</div>
+      <h3 class="font-scrabble text-2xl font-bold text-slate-800">20 QUESTS COMPLETE!</h3>
+      <p class="text-xs text-slate-500 mb-3">今日 DSE 詞彙回合圓滿完成</p>
+
+      <div class="grid grid-cols-3 gap-2 bg-slate-50 rounded-2xl p-2.5 mb-3 border border-slate-200">
+        <div>
+          <div class="text-[10px] text-slate-400 font-semibold">總得分</div>
+          <div id="sum-score" class="font-scrabble text-lg font-bold text-amber-600">0</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-semibold">答對率</div>
+          <div id="sum-acc" class="font-scrabble text-lg font-bold text-emerald-600">0%</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-semibold">最高連擊</div>
+          <div id="sum-combo" class="font-scrabble text-lg font-bold text-orange-600">0</div>
+        </div>
+      </div>
+
+      <!-- 回顧清單 -->
+      <div class="text-left mb-3.5">
+        <div class="text-xs font-bold text-slate-700 mb-1">📌 本回合 20 詞記憶覆盤：</div>
+        <div id="sum-review-list" class="max-h-36 overflow-y-auto space-y-1 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs no-scrollbar">
+          <!-- JS 動態生成 -->
+        </div>
+      </div>
+
+      <!-- 雙按鈕：再來一局 (無限次玩) 或返回首頁 -->
+      <div class="space-y-2">
+        <button onclick="startChallengeSession('normal')" class="btn-3d-primary w-full text-white font-scrabble font-bold py-3.5 rounded-xl text-sm">
+          🚀 再來一局 (下個 20 題)
+        </button>
+        <button onclick="returnToHomeFromSummary()" class="w-full bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-700 font-scrabble font-bold py-2.5 rounded-xl text-xs border border-slate-200">
+          🏠 返回主頁
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 彈窗 3：Leitner 五級箱統計 ==================== -->
+  <div id="modal-box-stats" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white/95 border-2 border-white rounded-3xl max-w-sm w-full p-5 shadow-2xl">
+      <div class="flex justify-between items-center mb-2.5">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📦</span>
+          <h3 class="font-scrabble font-bold text-base text-slate-800">Leitner 5 級記憶箱</h3>
+        </div>
+        <button onclick="closeModal('modal-box-stats')" class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+        每次 20 題會優先抽取 Box 1–2（生詞與易錯詞），並動態召回超過 7 天未見的單字。
+      </p>
+
+      <div class="grid grid-cols-5 gap-1.5 mb-3 text-center" id="box-stats-grid">
+        <!-- 動態填入 -->
+      </div>
+
+      <button onclick="closeModal('modal-box-stats'); startChallengeSession('weak');" class="btn-3d-mint w-full py-2.5 rounded-xl text-white font-scrabble font-bold text-xs">
+        🎯 立即針對 Box 1-2 進行特訓
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== 彈窗 4：CSV 題庫管理與匯入 ==================== -->
+  <div id="modal-csv-manage" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white/95 border-2 border-white rounded-3xl max-w-sm w-full p-5 shadow-2xl">
+      <div class="flex justify-between items-center mb-2.5">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⚙️</span>
+          <h3 class="font-scrabble font-bold text-base text-slate-800">題庫管理與匯入</h3>
+        </div>
+        <button onclick="closeModal('modal-csv-manage')" class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-500 mb-2.5 leading-relaxed">
+        支援直接選取你的 <code class="text-indigo-600 font-bold">2026.10.26_Flashcard master.csv</code>。匯入後自動存入手機，且會保留既有記憶箱進度！
+      </p>
+
+      <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200 mb-3 text-center">
+        <div class="text-xs text-slate-600 mb-2 font-medium">目前已載入詞庫：<b class="text-indigo-600 font-scrabble" id="modal-total-count">548 詞</b></div>
+        <label class="btn-3d-primary block w-full py-2.5 rounded-xl text-white text-xs font-bold cursor-pointer">
+          📥 點此選擇 CSV 檔案更新
+          <input type="file" id="csv-input" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
+        </label>
+        <div id="csv-feedback" class="text-[11px] text-emerald-600 font-bold mt-2 hidden"></div>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="handleResetProgress()" class="flex-1 bg-rose-50 border border-rose-200 text-rose-600 text-xs py-2 rounded-xl font-bold active:scale-95">
+          重置記憶進度
+        </button>
+        <button onclick="closeModal('modal-csv-manage')" class="flex-1 bg-slate-100 text-slate-600 text-xs py-2 rounded-xl font-bold active:scale-95">
+          關閉
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示氣泡 (Toast) -->
+  <div id="modal-toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-4">
+    <div class="bg-slate-800/95 backdrop-blur-md text-white px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold border border-white/20">
+      <span id="toast-icon">✨</span>
+      <span id="toast-msg">提示訊息</span>
+    </div>
+  </div>
+
+  <!-- ==================== 核心 JavaScript ==================== -->
+  <script>
+    // 預設核心 30 詞 (取自你的 548 詞庫，同時支援外部 CSV 匯入)
+    const CORE_VOCAB_FALLBACK = [
+      { id: 1, w: "PRACTICAL", display: "Practical", mask: "PRACTICAL", pos: "adj.", m: "實用的、實際的", d: "practically (adv.) 實際上", c: "practical experience 實務經驗", se: "She gained practical experience during her internship.", sz: "她在實習期間獲得了實務經驗。" },
+      { id: 2, w: "ASSOCIATE", display: "Associate", mask: "ASSOCIATE", pos: "v.", m: "把…聯繫在一起、聯想", d: "associate (n.) 夥伴、同事", c: "associate with this project 聯繫到這計劃中", se: "Only close friends and associates were invited.", sz: "僅邀請了親密的朋友和同事。" },
+      { id: 3, w: "POTENTIAL", display: "Potential", mask: "POTENTIAL", pos: "n.", m: "潛力、潛能", d: "potential (adj.) 潛在的", c: "potential threat 潛在威脅", se: "The new technology has great potential for development.", sz: "這項新技術具有巨大的發展潛力。" },
+      { id: 4, w: "CLAIM", display: "Claim", mask: "CLAIM", pos: "v.", m: "宣稱、主張、索賠", d: "claim (n.) 聲明、索賠", c: "claim damages 索賠損失", se: "He claimed to have seen the missing document.", sz: "他宣稱見到了失蹤的文件。" },
+      { id: 5, w: "ANNUAL", display: "Annual", mask: "ANNUAL", pos: "adj.", m: "每年的、年度的", d: "annually (adv.) 每年地", c: "annual report 年度報告", se: "The company held its annual meeting yesterday.", sz: "公司昨天舉行了年度會議。" },
+      { id: 6, w: "SIGNIFICANT", display: "Significant", mask: "SIGNIFICANT", pos: "adj.", m: "重大的、顯著的", d: "significance (n.) 重要性", c: "significant impact 重大影響", se: "The discovery had a significant impact on modern medicine.", sz: "這項發現對現代醫學產生了重大影響。" },
+      { id: 7, w: "RELUCTANT", display: "Reluctant", mask: "RELUCTANT", pos: "adj.", m: "不情願的、勉强的", d: "reluctantly (adv.) 不情願地", c: "reluctant to admit 不願承認", se: "He was reluctant to accept the new job offer.", sz: "他不太情願接受這份新工作。" },
+      { id: 8, w: "INEVITABLE", display: "Inevitable", mask: "INEVITABLE", pos: "adj.", m: "不可避免的、必然的", d: "inevitably (adv.) 不可避免地", c: "inevitable consequence 必然結果", se: "Change is an inevitable part of life.", sz: "改變是生命中不可避免的一部分。" },
+      { id: 9, w: "SUBSTANTIAL", display: "Substantial", mask: "SUBSTANTIAL", pos: "adj.", m: "大量的、實質的", d: "substantially (adv.) 大幅地", c: "substantial amount 大量", se: "They invested a substantial amount of money in the project.", sz: "他們在該項目投資了大量資金。" },
+      { id: 10, w: "INITIATIVE", display: "Initiative", mask: "INITIATIVE", pos: "n.", m: "倡議、主動性、新方案", d: "initiate (v.) 發起", c: "take the initiative 主動出擊", se: "The government launched a new initiative to reduce waste.", sz: "政府推出了一項減少廢物的新倡議。" },
+      { id: 11, w: "COMPETITIVE", display: "Competitive", mask: "COMPETITIVE", pos: "adj.", m: "具競爭力的、競爭激烈的", d: "competition (n.) 競爭", c: "competitive edge 競爭優勢", se: "Graduates face a highly competitive job market.", sz: "畢業生面對競爭極為激烈的就業市場。" },
+      { id: 12, w: "SUSTAINABLE", display: "Sustainable", mask: "SUSTAINABLE", pos: "adj.", m: "可持續的、永續的", d: "sustainability (n.) 可持續性", c: "sustainable development 可持續發展", se: "Tourism must be developed in a sustainable way.", sz: "旅遊業必須以可持續的方式發展。" },
+      { id: 13, w: "VULNERABLE", display: "Vulnerable", mask: "VULNERABLE", pos: "adj.", m: "脆弱的、易受傷害的", d: "vulnerability (n.) 脆弱性", c: "vulnerable groups 弱勢社群", se: "Elderly people are particularly vulnerable to extreme weather.", sz: "長者特別容易受到極端天氣影響。" },
+      { id: 14, w: "PHENOMENON", display: "Phenomenon", mask: "PHENOMENON", pos: "n.", m: "現象、非凡的人事物", d: "phenomenal (adj.) 驚人的", c: "global phenomenon 全球現象", se: "Aging population is a widespread social phenomenon.", sz: "人口老化是一個普遍的社會現象。" },
+      { id: 15, w: "DETERIORATE", display: "Deteriorate", mask: "DETERIORATE", pos: "v.", m: "惡化、變壞", d: "deterioration (n.) 惡化", c: "rapidly deteriorate 迅速惡化", se: "Air quality continues to deteriorate in industrial areas.", sz: "工業區的空氣質素持續惡化。" },
+      { id: 16, w: "IMPLEMENT", display: "Implement", mask: "IMPLEMENT", pos: "v.", m: "實施、執行、貫徹", d: "implementation (n.) 落實", c: "implement policies 實施政策", se: "The school will implement the new dress code next month.", sz: "學校將於下月實施新的服飾規範。" },
+      { id: 17, w: "ACCOMMODATE", display: "Accommodate", mask: "ACCOMMODATE", pos: "v.", m: "容納、提供住宿、遷就", d: "accommodation (n.) 住處", c: "accommodate needs 迎合需求", se: "The new hall can accommodate up to 800 guests.", sz: "新禮堂最多可容納 800 名賓客。" },
+      { id: 18, w: "CONTROVERSIAL", display: "Controversial", mask: "CONTROVERSIAL", pos: "adj.", m: "具爭議性的", d: "controversy (n.) 爭議", c: "controversial issue 具爭議的議題", se: "The proposed law remains highly controversial.", sz: "擬議的法例仍然極具爭議。" },
+      { id: 19, w: "AVIATION", display: "Aviation industry", mask: "________ INDUSTRY", pos: "n. phr.", m: "航空業", d: "aviation (n.) 航空", c: "work in the aviation industry 在航空業工作", se: "The pandemic hit the aviation industry extremely hard.", sz: "疫情給航空業帶來了極大的打擊。" },
+      { id: 20, w: "HOSPITALITY", display: "Hospitality industry", mask: "___________ INDUSTRY", pos: "n. phr.", m: "酒店及旅遊款待業", d: "hospitable (adj.) 好客的", c: "boom in the hospitality industry 款待業蓬勃發展", se: "Many graduates aspire to join the hospitality industry.", sz: "許多畢業生渴望投身酒店及款待業。" },
+      { id: 21, w: "PROFICIENCY", display: "Language proficiency", mask: "LANGUAGE ___________", pos: "n. phr.", m: "語言能力、精通程度", d: "proficient (adj.) 精通的", c: "high language proficiency 高語言水平", se: "Good language proficiency is essential for transnational firms.", sz: "良好的語言能力在跨國企業中至關重要。" },
+      { id: 22, w: "ACUMEN", display: "Business acumen", mask: "BUSINESS ______", pos: "n. phr.", m: "商業敏銳度、商業頭腦", d: "acute (adj.) 敏銳的", c: "sharp business acumen 敏銳商業頭腦", se: "Her sharp business acumen helped the start-up thrive.", sz: "她敏銳的商業頭腦幫助這家初創公司茁壯成長。" },
+      { id: 23, w: "ADVERSITY", display: "Adversity Quotient (AQ)", mask: "_________ QUOTIENT (AQ)", pos: "n. phr.", m: "逆境商數 (抗逆力)", d: "adverse (adj.) 不利的", c: "high Adversity Quotient 高抗逆力", se: "A high Adversity Quotient helps people overcome career setbacks.", sz: "高逆境商數有助人們克服職場挫折。" },
+      { id: 24, w: "HARMONIOUS", display: "Harmonious working environment", mask: "__________ WORKING ENVIRONMENT", pos: "n. phr.", m: "和諧的工作環境", d: "harmony (n.) 和諧", c: "build a harmonious environment 建立和諧環境", se: "Respect among colleagues creates a harmonious working environment.", sz: "同事間的互相尊重創造了和諧的工作環境。" }
+    ];
+
+    const SCRABBLE_SCORES = {
+      A:1, B:3, C:3, D:2, E:1, F:4, G:2, H:4, I:1, J:8, K:5, L:1, M:3,
+      N:1, O:1, P:3, Q:10, R:1, S:1, T:1, U:1, V:4, W:4, X:8, Y:4, Z:10
+    };
+
+    // 全域變數
+    let vocabPool = [];
+    let progressMap = {};
+    let sessionQueue = [];
+    let currentIdx = 0;
+    let currentItem = null;
+    let targetLetters = [];
+    let bonusMultipliers = [];
+    let rackTiles = [];
+    let boardState = [];
+    let lockedCorrect = [];
+    let triesLeft = 2;
+    let hintsLeft = 2; // 每題 2 次隨機位置提示
+    let audioPenaltyCount = 0; // 語境朗讀扣分計數 (-25分/次)
+    let score = 0;
+    let combo = 0;
+    let maxCombo = 0;
+    let correctCount = 0;
+    let timerInterval = null;
+    let timeLeft = 40;
+    let sessionHistory = [];
+    let audioMuted = false;
+    let audioCtx = null;
+
+    // 今日累積進度追蹤 (支援同日無限次暢玩)
+    let todayStats = {
+      date: new Date().toDateString(),
+      solvedCount: 0,
+      roundsCount: 0
+    };
+
+    // 音效合成引擎 (Web Audio API)
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playTone(type) {
+      if (audioMuted) return;
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'tap') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(480, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.06);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.06);
+          osc.start(now); osc.stop(now + 0.06);
+        } else if (type === 'success') {
+          [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.connect(g); g.connect(audioCtx.destination);
+            o.frequency.value = freq;
+            g.gain.setValueAtTime(0.13, now + i * 0.07);
+            g.gain.exponentialRampToValueAtTime(0.005, now + i * 0.07 + 0.3);
+            o.start(now + i * 0.07); o.stop(now + i * 0.07 + 0.3);
+          });
+        } else if (type === 'start') {
+          [440, 554.37, 659.25].forEach((freq, i) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.connect(g); g.connect(audioCtx.destination);
+            o.frequency.value = freq;
+            g.gain.setValueAtTime(0.12, now + i * 0.06);
+            g.gain.exponentialRampToValueAtTime(0.005, now + i * 0.06 + 0.25);
+            o.start(now + i * 0.06); o.stop(now + i * 0.06 + 0.25);
+          });
+        } else if (type === 'error') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(190, now);
+          osc.frequency.linearRampToValueAtTime(130, now + 0.22);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.22);
+          osc.start(now); osc.stop(now + 0.22);
+        }
+      } catch (e) {
+        console.warn('Audio play error:', e);
+      }
+    }
+
+    function toggleAudio() {
+      audioMuted = !audioMuted;
+      document.querySelectorAll('.sound-icon-display').forEach(el => {
+        el.textContent = audioMuted ? '🔇' : '🔊';
+      });
+      showToast(audioMuted ? '🔇 音效已關閉' : '🔊 音效已開啟');
+      if (!audioMuted) playTone('tap');
+    }
+
+    function vibrate(pattern) {
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    }
+
+    function playNavTone() {
+      playTone('tap');
+      vibrate(10);
+    }
+
+    function showToast(text, icon = '✨') {
+      const toast = document.getElementById('modal-toast');
+      document.getElementById('toast-msg').textContent = text;
+      document.getElementById('toast-icon').textContent = icon;
+      toast.classList.remove('opacity-0', '-translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-4');
+      }, 2000);
+    }
+
+    // CSV 智慧解析器
+    function parseCSVText(csvText) {
+      const rows = [];
+      let cur = '', inQuotes = false, row = [];
+      for (let i = 0; i < csvText.length; i++) {
+        const ch = csvText[i], next = csvText[i+1];
+        if (ch === '"') {
+          if (inQuotes && next === '"') { cur += '"'; i++; }
+          else inQuotes = !inQuotes;
+        } else if (ch === ',' && !inQuotes) {
+          row.push(cur); cur = '';
+        } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+          if (ch === '\r' && next === '\n') i++;
+          row.push(cur); rows.push(row); row = []; cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      if (cur || row.length) { row.push(cur); rows.push(row); }
+
+      const stopWords = new Set(['THE','AND','OF','IN','TO','FOR','WITH','ON','AT','BY','A','AN','ONES','SOMEBODY','WORK','WORKING','JOB','BUSINESS','INDUSTRY','COMPANY']);
+      const parsedList = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        if (!rows[i] || rows[i].length < 2) continue;
+        const rawFront = rows[i][0].trim();
+        const rawBack = rows[i][1].trim();
+        if (!rawFront) continue;
+
+        const parts = rawBack.split(/【(詞性變化|搭配詞|例句)】/);
+        const mainHeader = (parts[0] || '').trim();
+        const mHeader = mainHeader.match(/^[A-Za-z\s\-'\/()"]+\(([^)]+)\)\s*(.*)$/s);
+        let pos = mHeader ? mHeader[1].trim() : 'vocab';
+        let meaning = mHeader ? mHeader[2].trim() : mainHeader;
+
+        let deriv = '—', colloc = '—', se = '', sz = '';
+        for (let j = 1; j < parts.length; j += 2) {
+          const tag = parts[j], content = (parts[j+1] || '').trim();
+          if (tag === '詞性變化') deriv = content;
+          else if (tag === '搭配詞') colloc = content;
+          else if (tag === '例句') {
+            const mSent = content.match(/^(.*?)\s*\(([^)]+)\)\s*$/s);
+            if (mSent) { se = mSent[1].trim(); sz = mSent[2].trim(); }
+            else se = content;
+          }
+        }
+
+        const upperFront = rawFront.toUpperCase().replace(/^"|"$/g, '').trim();
+        let targetWord = upperFront;
+        let phraseMask = upperFront;
+
+        if (!/^[A-Z]+$/.test(upperFront)) {
+          const tokens = upperFront.match(/[A-Z]+/g) || ['WORD'];
+          const candidates = tokens.filter(t => !stopWords.has(t) && t.length >= 4);
+          targetWord = (candidates.length ? candidates : tokens).reduce((a, b) => a.length >= b.length ? a : b);
+          phraseMask = upperFront.replace(targetWord, '_'.repeat(targetWord.length));
+        }
+
+        parsedList.push({
+          id: i,
+          w: targetWord,
+          display: rawFront,
+          mask: phraseMask,
+          pos: pos,
+          m: meaning,
+          d: deriv,
+          c: colloc,
+          se: se || `Please remember the usage of ${rawFront}.`,
+          sz: sz || meaning
+        });
+      }
+      return parsedList;
+    }
+
+    // 初始化與本機儲存
+    async function initApp() {
+      // 讀取進度
+      const savedProgress = localStorage.getItem('dse_scrabble_progress_v2');
+      if (savedProgress) progressMap = JSON.parse(savedProgress);
+
+      // 讀取今日遊玩統計
+      const savedToday = localStorage.getItem('dse_today_stats');
+      if (savedToday) {
+        const obj = JSON.parse(savedToday);
+        if (obj.date === new Date().toDateString()) {
+          todayStats = obj;
+        } else {
+          todayStats = { date: new Date().toDateString(), solvedCount: 0, roundsCount: 0 };
+        }
+      }
+
+      // 讀取詞庫
+      const savedCustomVocab = localStorage.getItem('dse_scrabble_vocab_v2');
+      if (savedCustomVocab) {
+        vocabPool = JSON.parse(savedCustomVocab);
+      } else {
+        vocabPool = CORE_VOCAB_FALLBACK;
+        try {
+          let res = await fetch('./vocab.csv');
+          if (!res.ok) res = await fetch('./2026.10.26_Flashcard master.csv');
+          if (res.ok) {
+            const text = await res.text();
+            const parsed = parseCSVText(text);
+            if (parsed.length > 10) {
+              vocabPool = parsed;
+              localStorage.setItem('dse_scrabble_vocab_v2', JSON.stringify(vocabPool));
+            }
+          }
+        } catch (e) { /* 離線或無外置 CSV 時使用 fallback */ }
+      }
+
+      updateHomeScreenUI();
+    }
+
+    function getWordProgress(wKey) {
+      if (!progressMap[wKey]) {
+        progressMap[wKey] = { box: 1, lastSeen: 0, streak: 0 };
+      }
+      return progressMap[wKey];
+    }
+
+    function saveProgress() {
+      localStorage.setItem('dse_scrabble_progress_v2', JSON.stringify(progressMap));
+      localStorage.setItem('dse_today_stats', JSON.stringify(todayStats));
+    }
+
+    function updateHomeScreenUI() {
+      document.getElementById('home-total-badge').textContent = `${vocabPool.length} 詞`;
+      document.getElementById('modal-total-count').textContent = `${vocabPool.length} 詞`;
+
+      let box1Count = 0;
+      vocabPool.forEach(item => {
+        const b = getWordProgress(item.display).box;
+        if (b <= 2) box1Count++;
+      });
+      document.getElementById('home-weak-count').textContent = box1Count;
+      document.getElementById('home-daily-solved').textContent = todayStats.solvedCount;
+      document.getElementById('home-rounds-note').textContent = `今日已完成 ${todayStats.roundsCount} 回合 · 隨時可多玩`;
+
+      // 進度條累積
+      const pct = Math.min(100, Math.max(15, (todayStats.solvedCount / 20) * 100));
+      document.getElementById('home-daily-bar').style.width = `${pct}%`;
+    }
+
+    // 抽題組演算法 (每次 20 題，支援無限次遊玩)
+    function buildSessionQueue(mode = 'normal', count = 20) {
+      const now = Date.now();
+      const DAY_MS = 86400000;
+
+      const scored = vocabPool.map(item => {
+        const p = getWordProgress(item.display);
+        const daysSinceSeen = p.lastSeen ? (now - p.lastSeen) / DAY_MS : 30;
+
+        let weight = (6 - p.box) * 25 + Math.min(daysSinceSeen * 5, 60) + Math.random() * 20;
+        if (mode === 'weak' && p.box <= 2) weight += 100;
+        if (mode === 'colloc' && item.c && item.c !== '—') weight += 50;
+
+        return { item, weight, box: p.box };
+      });
+
+      scored.sort((a, b) => b.weight - a.weight);
+      const chosen = scored.slice(0, Math.min(count, scored.length)).map(x => x.item);
+      return chosen.sort(() => Math.random() - 0.5);
+    }
+
+    // 開始挑戰：切換畫面至 VIEW 2
+    function startChallengeSession(mode = 'normal') {
+      closeModal('modal-box-stats');
+      closeModal('modal-csv-manage');
+      closeModal('modal-summary');
+
+      sessionQueue = buildSessionQueue(mode, 20);
+      currentIdx = 0;
+      score = 0;
+      combo = 0;
+      maxCombo = 0;
+      correctCount = 0;
+      sessionHistory = [];
+
+      playTone('start');
+      vibrate([20, 60, 20]);
+
+      // 慶祝彩帶
+      confetti({ particleCount: 35, spread: 60, origin: { y: 0.65 } });
+      showToast('🚀 正在載入 20 題 Scrabble 解謎關卡！', '✨');
+
+      // 畫面切換：隱藏首頁，顯示遊戲畫面
+      document.getElementById('view-home').classList.add('hidden');
+      document.getElementById('view-game').classList.remove('hidden');
+      document.getElementById('view-game').classList.add('flex');
+
+      loadGameQuestion();
+    }
+
+    function returnToHomeFromSummary() {
+      closeModal('modal-summary');
+      document.getElementById('view-game').classList.add('hidden');
+      document.getElementById('view-game').classList.remove('flex');
+      document.getElementById('view-home').classList.remove('hidden');
+      updateHomeScreenUI();
+      playTone('tap');
+    }
+
+    function confirmExitGame() {
+      if (confirm('確定要暫停本局並返回主頁嗎？（當前進度不會丟失）')) {
+        clearInterval(timerInterval);
+        document.getElementById('app-container').classList.remove('danger-screen');
+        document.getElementById('view-game').classList.add('hidden');
+        document.getElementById('view-game').classList.remove('flex');
+        document.getElementById('view-home').classList.remove('hidden');
+        updateHomeScreenUI();
+        playTone('tap');
+      }
+    }
+
+    // 載入當前題目
+    function loadGameQuestion() {
+      clearInterval(timerInterval);
+      document.getElementById('app-container').classList.remove('danger-screen');
+
+      if (currentIdx >= sessionQueue.length) {
+        showRoundSummary();
+        return;
+      }
+
+      currentItem = sessionQueue[currentIdx];
+      targetLetters = currentItem.w.split('');
+      triesLeft = 2;
+      hintsLeft = 2;
+      audioPenaltyCount = 0;
+      lockedCorrect = new Array(targetLetters.length).fill(false);
+      boardState = new Array(targetLetters.length).fill(null);
+
+      // 隨機 Scrabble 特效加分格
+      bonusMultipliers = new Array(targetLetters.length).fill('NONE');
+      const dIdx = Math.floor(Math.random() * targetLetters.length);
+      bonusMultipliers[dIdx] = Math.random() > 0.4 ? 'DL' : 'TL';
+      if (targetLetters.length >= 7) {
+        const wIdx = (dIdx + 3) % targetLetters.length;
+        bonusMultipliers[wIdx] = 'DW';
+      }
+
+      // 手牌生成 (目標字母 + 2 干擾字母)
+      const distractors = 'AEIOURSTLNPMCD'.split('').filter(c => !targetLetters.includes(c));
+      const extraCount = targetLetters.length <= 8 ? 2 : 1;
+      const extras = [];
+      for (let i = 0; i < extraCount; i++) {
+        extras.push(distractors[Math.floor(Math.random() * distractors.length)] || 'E');
+      }
+
+      const allChars = [...targetLetters, ...extras].sort(() => Math.random() - 0.5);
+      rackTiles = allChars.map((ch, idx) => ({
+        id: `tile-${idx}`,
+        char: ch,
+        score: SCRABBLE_SCORES[ch] || 1,
+        used: false
+      }));
+
+      renderGameClueCard();
+      renderGameBoard();
+      renderGameRack();
+      updateGameHeaderUI();
+      updateHintButtonUI();
+      document.getElementById('game-feedback-msg').textContent = '';
+
+      timeLeft = Math.min(45, Math.max(35, targetLetters.length * 4 + 10));
+      startGameTimer();
+    }
+
+    function maskTargetInText(text, targetWord) {
+      if (!text) return '';
+      const regexWord = new RegExp(targetWord.slice(0, Math.max(3, targetWord.length - 2)) + '[a-zA-Z]*', 'gi');
+      return text.replace(regexWord, `<span class="text-indigo-600 font-bold underline decoration-2">_______</span>`);
+    }
+
+    function renderGameClueCard() {
+      const p = getWordProgress(currentItem.display);
+      document.getElementById('game-word-pos').textContent = currentItem.pos || 'vocab';
+      const boxNames = ['', 'Box 1 · 生詞/弱項', 'Box 2 · 初識', 'Box 3 · 熟悉', 'Box 4 · 鞏固', 'Box 5 · 精通'];
+      document.getElementById('game-box-tag').textContent = boxNames[p.box] || 'Box 1';
+      document.getElementById('game-word-meaning').textContent = currentItem.m;
+
+      document.getElementById('game-sentence-en').innerHTML = maskTargetInText(currentItem.se, currentItem.w);
+      document.getElementById('game-sentence-zh').textContent = currentItem.sz;
+
+      const maskedColloc = maskTargetInText(currentItem.c, currentItem.w);
+      document.getElementById('game-collocation-hint').innerHTML = maskedColloc || '—';
+
+      const phraseBox = document.getElementById('game-phrase-box');
+      if (currentItem.mask && currentItem.mask !== currentItem.w) {
+        phraseBox.classList.remove('hidden');
+        document.getElementById('game-phrase-mask').textContent = currentItem.mask;
+      } else {
+        phraseBox.classList.add('hidden');
+      }
+    }
+
+    function updateHintButtonUI() {
+      const btn = document.getElementById('btn-game-hint');
+      const label = document.getElementById('hint-btn-label');
+      if (hintsLeft > 0) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-40', 'cursor-not-allowed');
+        label.textContent = `💡 隨機揭示 (剩 ${hintsLeft} 次)`;
+      } else {
+        btn.disabled = true;
+        btn.classList.add('opacity-40', 'cursor-not-allowed');
+        label.textContent = `💡 提示已用盡`;
+      }
+    }
+
+    // 聽語境朗讀 (置中扣分項)
+    function useAudioClue() {
+      if (!currentItem) return;
+      playTone('tap');
+      vibrate(15);
+      audioPenaltyCount++;
+      showToast('🔊 聽力線索已消耗 (-25 分)', '🎧');
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(currentItem.se);
+        u.lang = 'en-GB';
+        u.rate = 0.92;
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    // 隨機位置提示 (升級至 2 次機會，隨機選定未揭示格)
+    function useRandomHint() {
+      if (hintsLeft <= 0) {
+        showToast('💡 本題隨機提示機會已用盡！', '⚠️');
+        return;
+      }
+
+      // 篩選所有尚未鎖定/未正確揭示的位置
+      const unrevealedIndices = [];
+      for (let i = 0; i < targetLetters.length; i++) {
+        if (!lockedCorrect[i]) unrevealedIndices.push(i);
+      }
+
+      if (unrevealedIndices.length === 0) {
+        showToast('所有字母格均已正確揭示！', '✨');
+        return;
+      }
+
+      // 隨機選取一個未揭示位置
+      const randIdx = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
+      const neededChar = targetLetters[randIdx];
+
+      // 若該格已有尚未鎖定的字母，先退回手牌
+      if (boardState[randIdx] && !lockedCorrect[randIdx]) {
+        boardState[randIdx].used = false;
+        boardState[randIdx] = null;
+      }
+
+      // 尋找符合該字母的牌（優先從牌架手牌找，若已放在其他未鎖定格則挪回使用）
+      let tileObj = rackTiles.find(t => !t.used && t.char === neededChar);
+      if (!tileObj) {
+        for (let j = 0; j < boardState.length; j++) {
+          if (boardState[j] && boardState[j].char === neededChar && !lockedCorrect[j]) {
+            tileObj = boardState[j];
+            boardState[j] = null;
+            break;
+          }
+        }
+      }
+
+      if (tileObj) {
+        tileObj.used = true;
+        boardState[randIdx] = tileObj;
+        lockedCorrect[randIdx] = true;
+      }
+
+      hintsLeft--;
+      updateHintButtonUI();
+      playTone('tap');
+      vibrate([15, 30]);
+
+      document.getElementById('game-feedback-msg').textContent = `💡 已隨機鎖定第 ${randIdx + 1} 個字母！(分值 -20%)`;
+      renderGameBoard();
+      renderGameRack();
+    }
+
+    function renderGameBoard() {
+      const container = document.getElementById('game-board-slots');
+      container.innerHTML = '';
+      const len = targetLetters.length;
+      const sizeClass = len > 9 ? 'w-8 h-10 text-base' : (len > 7 ? 'w-9 h-11 text-lg' : 'w-11 h-12 text-xl');
+
+      for (let i = 0; i < len; i++) {
+        const slot = document.createElement('button');
+        slot.id = `game-slot-${i}`;
+        const tile = boardState[i];
+        const bonus = bonusMultipliers[i];
+
+        let baseStyle = 'bg-white/80 border-2 border-dashed border-slate-300 text-slate-800';
+        if (lockedCorrect[i]) {
+          baseStyle = 'slot-correct border-2 border-solid';
+        } else if (tile) {
+          baseStyle = 'scrabble-tile border-solid';
+        } else if (bonus === 'DL') {
+          baseStyle = 'bg-sky-50 border-2 border-sky-400 text-sky-700';
+        } else if (bonus === 'TL') {
+          baseStyle = 'bg-indigo-50 border-2 border-indigo-400 text-indigo-700';
+        } else if (bonus === 'DW') {
+          baseStyle = 'bg-rose-50 border-2 border-rose-400 text-rose-700';
+        }
+
+        slot.className = `relative ${sizeClass} rounded-xl font-scrabble font-bold flex items-center justify-center shadow-xs transition-all ${baseStyle}`;
+        slot.onclick = () => removeTileFromSlot(i);
+
+        if (tile) {
+          slot.innerHTML = `
+            <span>${tile.char}</span>
+            <span class="score">${tile.score}</span>
+          `;
+        } else if (bonus !== 'NONE') {
+          slot.innerHTML = `<span class="text-[10px] tracking-tighter opacity-80">${bonus}</span>`;
+        }
+
+        container.appendChild(slot);
+      }
+    }
+
+    function renderGameRack() {
+      const container = document.getElementById('game-tile-rack');
+      container.innerHTML = '';
+
+      rackTiles.forEach((tile, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `scrabble-tile w-11 h-12 rounded-xl font-scrabble font-bold text-xl relative flex items-center justify-center ${tile.used ? 'tile-used' : ''}`;
+        btn.innerHTML = `
+          <span>${tile.char}</span>
+          <span class="score">${tile.score}</span>
+        `;
+        btn.onclick = () => placeTileInNextSlot(idx);
+        container.appendChild(btn);
+      });
+    }
+
+    // 拼字填入與退回
+    function placeTileInNextSlot(rackIdx) {
+      const tile = rackTiles[rackIdx];
+      if (tile.used) return;
+
+      const emptySlotIdx = boardState.findIndex(s => s === null);
+      if (emptySlotIdx === -1) return;
+
+      playTone('tap');
+      vibrate(12);
+      tile.used = true;
+      boardState[emptySlotIdx] = tile;
+      renderGameBoard();
+      renderGameRack();
+    }
+
+    function removeTileFromSlot(slotIdx) {
+      if (lockedCorrect[slotIdx]) return;
+      const tile = boardState[slotIdx];
+      if (!tile) return;
+
+      playTone('tap');
+      vibrate(8);
+      tile.used = false;
+      boardState[slotIdx] = null;
+      renderGameBoard();
+      renderGameRack();
+    }
+
+    function backspaceSlot() {
+      for (let i = boardState.length - 1; i >= 0; i--) {
+        if (boardState[i] !== null && !lockedCorrect[i]) {
+          removeTileFromSlot(i);
+          break;
+        }
+      }
+    }
+
+    function clearBoard() {
+      boardState.forEach((tile, i) => {
+        if (tile && !lockedCorrect[i]) {
+          tile.used = false;
+          boardState[i] = null;
+        }
+      });
+      playTone('tap');
+      renderGameBoard();
+      renderGameRack();
+    }
+
+    function shuffleRack() {
+      rackTiles.sort(() => Math.random() - 0.5);
+      playTone('tap');
+      renderGameRack();
+    }
+
+    function useGameHint() {
+      if (hintUsed) return;
+      hintUsed = true;
+      document.getElementById('btn-game-hint').disabled = true;
+      document.getElementById('btn-game-hint').classList.add('opacity-40');
+
+      clearBoard();
+      const firstUnfilled = lockedCorrect.findIndex(x => !x);
+      if (firstUnfilled !== -1) {
+        const neededChar = targetLetters[firstUnfilled];
+        const tileObj = rackTiles.find(t => !t.used && t.char === neededChar);
+        if (tileObj) {
+          tileObj.used = true;
+          boardState[firstUnfilled] = tileObj;
+          lockedCorrect[firstUnfilled] = true;
+        }
+      }
+      document.getElementById('game-feedback-msg').textContent = '💡 已鎖定 1 個未知字母（本題分值 -30%）';
+      renderGameBoard();
+      renderGameRack();
+    }
+
+    // 提交驗證 (Wordle 翻牌與 2 次嘗試機制)
+    function submitWord() {
+      if (boardState.some(s => s === null)) {
+        document.getElementById('game-feedback-msg').textContent = '⚠️ 請先填滿所有字母格再提交！';
+        document.getElementById('game-board-slots').classList.add('animate-shake');
+        vibrate([25, 40, 25]);
+        setTimeout(() => document.getElementById('game-board-slots').classList.remove('animate-shake'), 400);
+        return;
+      }
+
+      const guessWord = boardState.map(t => t.char).join('');
+      const isCorrect = (guessWord === currentItem.w);
+
+      const statuses = new Array(targetLetters.length).fill('absent');
+      const remainingCounts = {};
+      targetLetters.forEach((ch, i) => {
+        if (boardState[i].char === ch) {
+          statuses[i] = 'correct';
+        } else {
+          remainingCounts[ch] = (remainingCounts[ch] || 0) + 1;
+        }
+      });
+      boardState.forEach((tile, i) => {
+        if (statuses[i] !== 'correct' && remainingCounts[tile.char] > 0) {
+          statuses[i] = 'present';
+          remainingCounts[tile.char]--;
+        }
+      });
+
+      statuses.forEach((st, i) => {
+        const slotEl = document.getElementById(`game-slot-${i}`);
+        setTimeout(() => {
+          slotEl.classList.add('animate-flip');
+          slotEl.classList.remove('scrabble-tile');
+          if (st === 'correct') slotEl.classList.add('slot-correct');
+          else if (st === 'present') slotEl.classList.add('slot-present');
+          else slotEl.classList.add('slot-absent');
+        }, i * 65);
+      });
+
+      setTimeout(() => {
+        if (isCorrect) {
+          handleGameAnswerSuccess();
+        } else {
+          handleGameAnswerWrong(statuses);
+        }
+      }, targetLetters.length * 65 + 240);
+    }
+
+    function calculateScrabbleScore() {
+      let base = 0;
+      let wordMult = 1;
+      boardState.forEach((tile, i) => {
+        let lScore = tile.score;
+        if (bonusMultipliers[i] === 'DL') lScore *= 2;
+        if (bonusMultipliers[i] === 'TL') lScore *= 3;
+        if (bonusMultipliers[i] === 'DW') wordMult *= 2;
+        base += lScore;
+      });
+      let total = base * wordMult * 10;
+      total += timeLeft * 3;
+
+      // 隨機提示扣分 (-20%/次，最多用 2 次)
+      const hintsUsed = 2 - hintsLeft;
+      if (hintsUsed > 0) {
+        total = Math.round(total * Math.max(0.2, 1 - hintsUsed * 0.2));
+      }
+
+      // 第二次機會提交扣分
+      if (triesLeft === 1) total = Math.round(total * 0.8);
+
+      // 語境朗讀扣分 (-25 分/次)
+      if (audioPenaltyCount > 0) {
+        total = Math.max(10, total - audioPenaltyCount * 25);
+      }
+
+      // 連擊 3 題以上加成
+      if (combo >= 3) total = Math.round(total * 1.5);
+      return total;
+    }
+
+    function handleGameAnswerSuccess() {
+      clearInterval(timerInterval);
+      playTone('success');
+      vibrate([40, 60, 80]);
+
+      const pts = calculateScrabbleScore();
+      score += pts;
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+      correctCount++;
+
+      // 更新 Leitner 進度
+      const p = getWordProgress(currentItem.display);
+      p.box = Math.min(5, p.box + 1);
+      p.lastSeen = Date.now();
+      
+      // 更新今日累計
+      todayStats.solvedCount++;
+      saveProgress();
+
+      sessionHistory.push({ item: currentItem, ok: true });
+
+      if (combo >= 3) {
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      }
+
+      updateGameHeaderUI();
+      showDetailModal(true, pts);
+    }
+
+    function handleGameAnswerWrong(statuses) {
+      triesLeft--;
+      playTone('error');
+      vibrate([80, 50, 100]);
+      updateGameHeaderUI();
+
+      if (triesLeft > 0) {
+        document.getElementById('game-feedback-msg').textContent = '🟡 綠燈已鎖定！請根據黃/灰提示作最後一次推理！';
+        setTimeout(() => {
+          statuses.forEach((st, i) => {
+            if (st === 'correct') {
+              lockedCorrect[i] = true;
+            } else {
+              if (boardState[i]) boardState[i].used = false;
+              boardState[i] = null;
+            }
+          });
+          renderGameBoard();
+          renderGameRack();
+        }, 850);
+      } else {
+        clearInterval(timerInterval);
+        combo = 0;
+        const p = getWordProgress(currentItem.display);
+        p.box = 1;
+        p.lastSeen = Date.now();
+        saveProgress();
+
+        sessionHistory.push({ item: currentItem, ok: false });
+        updateGameHeaderUI();
+        showDetailModal(false, 0);
+      }
+    }
+
+    // 倒數計時與危機警示
+    function startGameTimer() {
+      const maxTime = timeLeft;
+      updateGameTimerUI(maxTime);
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateGameTimerUI(maxTime);
+
+        if (timeLeft <= 10 && timeLeft > 0) {
+          document.getElementById('app-container').classList.add('danger-screen');
+          vibrate(20);
+        }
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          triesLeft = 1;
+          handleGameAnswerWrong(new Array(targetLetters.length).fill('absent'));
+        }
+      }, 1000);
+    }
+
+    function updateGameTimerUI(maxTime) {
+      const bar = document.getElementById('game-timer-bar');
+      const txt = document.getElementById('game-timer-text');
+      const pct = Math.max(0, (timeLeft / maxTime) * 100);
+      bar.style.width = `${pct}%`;
+      txt.textContent = `${timeLeft}s`;
+
+      if (timeLeft <= 10) {
+        bar.className = 'bg-rose-500 h-full transition-all duration-300';
+        txt.className = 'font-scrabble text-xs font-bold text-rose-500 w-8 text-right animate-pulse';
+      } else {
+        bar.className = 'bg-gradient-to-r from-emerald-400 to-teal-400 h-full transition-all duration-300';
+        txt.className = 'font-scrabble text-xs font-bold text-slate-600 w-8 text-right';
+      }
+    }
+
+    function updateGameHeaderUI() {
+      document.getElementById('game-q-idx').textContent = Math.min(sessionQueue.length, currentIdx + 1);
+      document.getElementById('game-score-display').textContent = score;
+      document.getElementById('game-tries-display').innerHTML = '❤️'.repeat(triesLeft) + '🖤'.repeat(2 - triesLeft);
+
+      const comboBadge = document.getElementById('game-combo-badge');
+      const clueCard = document.getElementById('game-clue-card');
+      if (combo >= 2) {
+        comboBadge.classList.remove('hidden');
+        document.getElementById('game-combo-val').textContent = combo;
+      } else {
+        comboBadge.classList.add('hidden');
+      }
+
+      if (combo >= 3) clueCard.classList.add('on-fire-glow');
+      else clueCard.classList.remove('on-fire-glow');
+    }
+
+    // 單題詳解彈窗
+    function showDetailModal(isWin, pts) {
+      document.getElementById('app-container').classList.remove('danger-screen');
+      const badge = document.getElementById('detail-badge');
+      if (isWin) {
+        badge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+        badge.textContent = `✓ SPELL MASTERED! +${pts} PTS`;
+      } else {
+        badge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-300';
+        badge.textContent = `✕ 答案揭曉 (已移至 Box 1 加強)`;
+      }
+
+      document.getElementById('detail-word').textContent = currentItem.display;
+      document.getElementById('detail-meaning').textContent = `(${currentItem.pos}) ${currentItem.m}`;
+      document.getElementById('detail-deriv').textContent = currentItem.d || '—';
+      document.getElementById('detail-colloc').textContent = currentItem.c || '—';
+      document.getElementById('detail-se').textContent = currentItem.se;
+      document.getElementById('detail-sz').textContent = currentItem.sz;
+
+      document.getElementById('detail-bonus-quiz').classList.remove('hidden');
+      openModal('modal-detail');
+      speakWord();
+    }
+
+    function claimBonus(confident) {
+      const p = getWordProgress(currentItem.display);
+      if (confident) {
+        score += 50;
+        p.box = Math.min(5, p.box + 1);
+      } else {
+        p.box = 1;
+      }
+      saveProgress();
+      updateGameHeaderUI();
+      document.getElementById('detail-bonus-quiz').classList.add('hidden');
+      playTone('tap');
+    }
+
+    function nextQuestion() {
+      closeModal('modal-detail');
+      currentIdx++;
+      loadGameQuestion();
+    }
+
+    // 20 題結算畫面 (支援一鍵再來一局，不限當日次數)
+    function showRoundSummary() {
+      todayStats.roundsCount++;
+      saveProgress();
+
+      confetti({ particleCount: 90, spread: 80, origin: { y: 0.5 } });
+      document.getElementById('sum-score').textContent = score;
+      const acc = Math.round((correctCount / sessionQueue.length) * 100) || 0;
+      document.getElementById('sum-acc').textContent = `${acc}%`;
+      document.getElementById('sum-combo').textContent = maxCombo;
+
+      const listEl = document.getElementById('sum-review-list');
+      listEl.innerHTML = '';
+      sessionHistory.forEach(({ item, ok }) => {
+        const row = document.createElement('div');
+        row.className = 'flex justify-between items-center py-1 border-b border-slate-200/60';
+        row.innerHTML = `
+          <div>
+            <span class="${ok ? 'text-emerald-600 font-bold' : 'text-rose-500 font-bold'} mr-1">${ok ? '✓' : '✗'}</span>
+            <span class="font-scrabble font-bold text-slate-800">${item.display}</span>
+          </div>
+          <span class="text-slate-500 truncate max-w-[130px] text-[11px]">${item.m}</span>
+        `;
+        listEl.appendChild(row);
+      });
+
+      openModal('modal-summary');
+    }
+
+    // Leitner Box 統計面板
+    function openBoxStatsModal() {
+      const counts = [0, 0, 0, 0, 0, 0];
+      vocabPool.forEach(item => {
+        const b = getWordProgress(item.display).box;
+        counts[b] = (counts[b] || 0) + 1;
+      });
+
+      const grid = document.getElementById('box-stats-grid');
+      grid.innerHTML = '';
+      const styles = [
+        '',
+        'bg-rose-50 border-rose-200 text-rose-700',
+        'bg-amber-50 border-amber-200 text-amber-700',
+        'bg-sky-50 border-sky-200 text-sky-700',
+        'bg-indigo-50 border-indigo-200 text-indigo-700',
+        'bg-emerald-50 border-emerald-200 text-emerald-700'
+      ];
+
+      for (let b = 1; b <= 5; b++) {
+        grid.innerHTML += `
+          <div class="border rounded-xl p-1.5 ${styles[b]}">
+            <div class="text-[9px] font-bold opacity-80">Box ${b}</div>
+            <div class="font-scrabble text-sm font-bold">${counts[b]}</div>
+          </div>
+        `;
+      }
+      openModal('modal-box-stats');
+    }
+
+    function openCsvManageModal() {
+      document.getElementById('modal-total-count').textContent = `${vocabPool.length} 詞`;
+      openModal('modal-csv-manage');
+    }
+
+    function handleCSVImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const parsed = parseCSVText(e.target.result);
+        if (parsed.length > 0) {
+          vocabPool = parsed;
+          localStorage.setItem('dse_scrabble_vocab_v2', JSON.stringify(vocabPool));
+          updateHomeScreenUI();
+          const fb = document.getElementById('csv-feedback');
+          fb.textContent = `✅ 成功解析並更新 ${vocabPool.length} 個考試詞彙！`;
+          fb.classList.remove('hidden');
+          playTone('success');
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function handleResetProgress() {
+      if (confirm('確定要重置所有單字的記憶箱等級嗎？（詞庫與題目不會刪除）')) {
+        progressMap = {};
+        todayStats.solvedCount = 0;
+        todayStats.roundsCount = 0;
+        saveProgress();
+        updateHomeScreenUI();
+        closeModal('modal-csv-manage');
+        showToast('已重置進度，準備重新出發！', '🔄');
+      }
+    }
+
+    function openProfileModal() {
+      playTone('tap');
+      showToast('🌟 目前等級：Lv.12 Word Explorer (目標 5**)', '🎓');
+    }
+
+    function openAchievementsModal() {
+      playTone('tap');
+      showToast(`🏆 今日已累計複習 ${todayStats.solvedCount} 詞 (${todayStats.roundsCount} 回合)`, '🎖️');
+    }
+
+    function speakWord() {
+      if (!('speechSynthesis' in window) || !currentItem) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(currentItem.display);
+      u.lang = 'en-GB';
+      u.rate = 0.95;
+      window.speechSynthesis.speak(u);
+    }
+
+    function speakSentence() {
+      if (!('speechSynthesis' in window) || !currentItem) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(currentItem.se);
+      u.lang = 'en-GB';
+      u.rate = 0.92;
+      window.speechSynthesis.speak(u);
+    }
+
+    function openModal(id) {
+      playTone('tap');
+      const el = document.getElementById(id);
+      el.classList.remove('hidden');
+      el.classList.add('flex');
+    }
+
+    function closeModal(id) {
+      playTone('tap');
+      const el = document.getElementById(id);
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
