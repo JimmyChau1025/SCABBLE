@@ -40,9 +40,15 @@
       border-right: 2px solid #D97706 !important;
       box-shadow: 0 4px 8px rgba(180, 83, 9, 0.18);
       cursor: grab;
-      transition: transform 0.12s ease, opacity 0.15s ease;
+      touch-action: none;
+      will-change: transform;
     }
-    .scrabble-tile:active { cursor: grabbing; transform: translateY(2px) scale(0.95); border-bottom-width: 2px !important; }
+    .scrabble-tile.dragging {
+      z-index: 9999 !important;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.35) !important;
+      transition: none !important;
+      opacity: 0.95;
+    }
     .tile-used { opacity: 0.25 !important; pointer-events: none; transform: scale(0.9); }
     .btn-primary-3d {
       background-color: #6366F1 !important;
@@ -61,6 +67,11 @@
     .slot-absent { background: linear-gradient(145deg, #94A3B8, #64748B) !important; color: #FFFFFF !important; border: 2px solid #475569 !important; }
     @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
     .animate-shake { animation: shake 0.35s ease; }
+    .slot-drag-hover {
+      transform: scale(1.1);
+      border-color: #6366F1 !important;
+      background-color: #EEF2FF !important;
+    }
   </style>
 </head>
 <body class="bg-pastel-mesh min-h-screen flex flex-col items-center">
@@ -205,7 +216,7 @@
     <!-- 玩家手牌槽 -->
     <section class="glass-card rounded-2xl p-3">
       <div class="flex justify-between items-center mb-2 px-1">
-        <span class="text-[11px] text-slate-500 font-bold">💡 點擊或拖曳磚塊排字 · 點棋盤格退回</span>
+        <span class="text-[11px] text-slate-500 font-bold">💡 點擊或直接拖曳字母磚排字 · 點棋盤格退回</span>
         <div class="flex gap-1.5">
           <button onclick="shuffleRack()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg">🔀 洗牌</button>
           <button onclick="clearBoard()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg">🧹 清空</button>
@@ -536,7 +547,7 @@ function renderClueCard() {
   audioBtn.innerHTML = `<span>🔊 聽語境朗讀 (-25 分)</span>`;
 }
 
-// 渲染棋盤格（支援點擊退回與接收拖曳放置）
+// 渲染棋盤格（單行、動態縮放、點擊退回）
 function renderBoard() {
   const container = document.getElementById('board-slots');
   container.innerHTML = '';
@@ -560,8 +571,6 @@ function renderBoard() {
     else if (bonus === 'TL') styleClass = 'bg-indigo-100 border-2 border-indigo-400 text-indigo-800 shrink-0';
 
     slot.className = `relative ${sizeClass} rounded-xl font-scrabble font-bold flex items-center justify-center shadow-sm ${styleClass}`;
-    
-    // 點擊空格退回字母
     slot.onclick = () => removeTileFromSlot(i);
 
     if (tile) {
@@ -573,81 +582,98 @@ function renderBoard() {
   }
 }
 
-// 渲染手牌 (完美兼顧 點擊自動填入 + 手指順暢拖曳)
+// 渲染手牌（採用 bubble.html 的實體跟手 translate3d 拖曳架構）
 function renderRack() {
   const container = document.getElementById('tile-rack');
   container.innerHTML = '';
   rackTiles.forEach((tile) => {
-    const btn = document.createElement('div');
-    btn.className = `scrabble-tile w-11 h-12 rounded-xl font-scrabble font-bold text-xl relative flex items-center justify-center ${tile.used ? 'tile-used' : ''}`;
-    btn.innerHTML = `<span>${tile.char}</span><span class="absolute bottom-0.5 right-1 text-[9px] opacity-75">${tile.score}</span>`;
-    
-    let isMoving = false;
-    let startX = 0, startY = 0;
+    const el = document.createElement('div');
+    el.className = `scrabble-tile w-11 h-12 rounded-xl font-scrabble font-bold text-xl relative flex items-center justify-center ${tile.used ? 'tile-used' : ''}`;
+    el.innerHTML = `<span>${tile.char}</span><span class="absolute bottom-0.5 right-1 text-[9px] opacity-75">${tile.score}</span>`;
 
-    // 點擊填入 (Tap to place)
-    btn.onclick = () => {
-      if (isMoving || tile.used) return;
-      const emptyIdx = boardState.findIndex(s => s === null);
-      if (emptyIdx === -1) return;
-      playTone('tap');
-      tile.used = true;
-      boardState[emptyIdx] = tile;
-      renderBoard();
-      renderRack();
-    };
+    // 移植 bubble.html 的核心 pointer 事件邏輯
+    let startX = 0, startY = 0, moved = false;
+    let slotRects = [];
 
-    // 觸控與滑鼠拖曳邏輯 (Touch & Mouse Drag Drop)
-    const onTouchStart = (e) => {
+    el.addEventListener('pointerdown', (e) => {
       if (tile.used) return;
-      isMoving = false;
-      const touch = e.touches ? e.touches[0] : e;
-      startX = touch.clientX;
-      startY = touch.clientY;
+      el.setPointerCapture(e.pointerId);
+      startX = e.clientX;
+      startY = e.clientY;
+      moved = false;
 
-      const onMove = (ev) => {
-        const t = ev.touches ? ev.touches[0] : ev;
-        if (Math.abs(t.clientX - startX) > 6 || Math.abs(t.clientY - startY) > 6) {
-          isMoving = true;
-        }
-      };
+      // 快取所有棋盤格的位置
+      const slots = document.querySelectorAll('#board-slots > div');
+      slotRects = Array.from(slots).map((s, idx) => ({ idx, rect: s.getBoundingClientRect() }));
 
-      const onEnd = (ev) => {
-        const t = ev.changedTouches ? ev.changedTouches[0] : ev;
-        if (isMoving) {
-          // 檢查放開時是否落在棋盤格上
-          const slots = document.querySelectorAll('#board-slots > div');
-          for (let i = 0; i < slots.length; i++) {
-            const rect = slots[i].getBoundingClientRect();
-            if (t.clientX >= rect.left && t.clientX <= rect.right && t.clientY >= rect.top && t.clientY <= rect.bottom) {
-              if (!lockedCorrect[i]) {
-                if (boardState[i] !== null) boardState[i].used = false;
-                tile.used = true;
-                boardState[i] = tile;
-                playTone('tap');
-                renderBoard();
-                renderRack();
-                break;
-              }
-            }
+      el.classList.add('dragging');
+    });
+
+    el.addEventListener('pointermove', (e) => {
+      if (!el.classList.contains('dragging') || tile.used) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (!moved && Math.hypot(dx, dy) > 8) moved = true;
+
+      // 真正實體跟手 3D 移動，絕不隱形！
+      el.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.15)`;
+
+      // 檢查是否滑動在某個格子上，加入高亮效果
+      slotRects.forEach(({ idx, rect }) => {
+        const slotEl = document.getElementById(`slot-${idx}`);
+        if (slotEl) {
+          if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            slotEl.classList.add('slot-drag-hover');
+          } else {
+            slotEl.classList.remove('slot-drag-hover');
           }
         }
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onEnd);
-        window.removeEventListener('touchmove', onMove);
-        window.removeEventListener('touchend', onEnd);
-      };
+      });
+    });
 
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onEnd);
-      window.addEventListener('touchmove', onMove);
-      window.addEventListener('touchend', onEnd);
-    };
+    el.addEventListener('pointerup', (e) => {
+      if (!el.classList.contains('dragging')) return;
+      el.classList.remove('dragging');
+      el.style.transform = '';
 
-    btn.onmousedown = onTouchStart;
-    btn.ontouchstart = onTouchStart;
+      // 清除所有格子的高亮效果
+      document.querySelectorAll('#board-slots > div').forEach(s => s.classList.remove('slot-drag-hover'));
 
-    container.appendChild(btn);
+      // 判斷是否落在某個棋盤格子上
+      let targetSlotIdx = -1;
+      for (let s of slotRects) {
+        if (e.clientX >= s.rect.left && e.clientX <= s.rect.right && e.clientY >= s.rect.top && e.clientY <= s.rect.bottom) {
+          targetSlotIdx = s.idx;
+          break;
+        }
+      }
+
+      if (targetSlotIdx !== -1) {
+        // 拖曳放置 (Drop into specific slot)
+        if (!lockedCorrect[targetSlotIdx]) {
+          if (boardState[targetSlotIdx] !== null) {
+            boardState[targetSlotIdx].used = false;
+          }
+          tile.used = true;
+          boardState[targetSlotIdx] = tile;
+          playTone('tap');
+          renderBoard();
+          renderRack();
+        }
+      } else if (!moved) {
+        // 輕觸點擊 (Tap to first empty slot)
+        const emptyIdx = boardState.findIndex(s => s === null);
+        if (emptyIdx !== -1) {
+          playTone('tap');
+          tile.used = true;
+          boardState[emptyIdx] = tile;
+          renderBoard();
+          renderRack();
+        }
+      }
+    });
+
+    container.appendChild(el);
   });
 }
 
