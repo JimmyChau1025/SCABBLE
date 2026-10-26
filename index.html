@@ -61,20 +61,6 @@
     .slot-absent { background: linear-gradient(145deg, #94A3B8, #64748B) !important; color: #FFFFFF !important; border: 2px solid #475569 !important; }
     @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
     .animate-shake { animation: shake 0.35s ease; }
-    /* 強制單行橫向捲動，防止長單字折行 */
-    .board-scroll-container {
-      display: flex;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      max-width: 100%;
-      padding: 6px 4px;
-      gap: 6px;
-      justify-content: flex-start;
-      scrollbar-width: thin;
-    }
-    @media(min-width: 380px) {
-      .board-scroll-container { justify-content: center; }
-    }
   </style>
 </head>
 <body class="bg-pastel-mesh min-h-screen flex flex-col items-center">
@@ -208,9 +194,9 @@
         PHRASE: <span id="phrase-mask-text"></span>
       </div>
       
-      <!-- 棋盤格單行捲動容器 -->
-      <div class="w-full overflow-x-auto py-1">
-        <div id="board-slots" class="board-scroll-container"></div>
+      <!-- 智慧單行置中棋盤格容器 -->
+      <div class="w-full px-1 py-1 flex justify-center">
+        <div id="board-slots" class="flex flex-row flex-nowrap items-center justify-center gap-1 max-w-full"></div>
       </div>
 
       <div id="feedback-msg" class="h-5 mt-1 text-xs font-bold text-center text-rose-600"></div>
@@ -550,12 +536,17 @@ function renderClueCard() {
   audioBtn.innerHTML = `<span>🔊 聽語境朗讀 (-25 分)</span>`;
 }
 
-// 渲染單行捲動棋盤格（支援拖曳放置與點擊退回）
+// 渲染智慧單行置中棋盤格（自動依長度縮放方塊大小，保證絕不換行）
 function renderBoard() {
   const container = document.getElementById('board-slots');
   container.innerHTML = '';
   const len = targetLetters.length;
-  const sizeClass = len > 10 ? 'w-9 h-11 text-base' : 'w-11 h-12 text-xl';
+  
+  // 智慧動態尺寸：字數越多格子自動縮小，保證單行放得下
+  let sizeClass = 'w-10 h-11 text-lg';
+  if (len > 11) sizeClass = 'w-6 h-8 text-xs';
+  else if (len > 9) sizeClass = 'w-7 h-9 text-sm';
+  else if (len > 7) sizeClass = 'w-8 h-10 text-base';
 
   for (let i = 0; i < len; i++) {
     const slot = document.createElement('div');
