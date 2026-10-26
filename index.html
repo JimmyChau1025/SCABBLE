@@ -1759,6 +1759,13 @@ function closeModal(id) {
 }
 
 window.addEventListener('DOMContentLoaded', initApp);
+
+// 自動註冊 Service Worker，讓 Android Chrome 完美識別並解鎖「安裝 App」功能
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
 </script>
 </body>
 </html>
