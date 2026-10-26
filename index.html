@@ -39,9 +39,10 @@
       border-bottom: 4px solid #D97706 !important;
       border-right: 2px solid #D97706 !important;
       box-shadow: 0 4px 8px rgba(180, 83, 9, 0.18);
+      cursor: grab;
       transition: transform 0.12s ease, opacity 0.15s ease;
     }
-    .scrabble-tile:active { transform: translateY(2px) scale(0.95); border-bottom-width: 2px !important; }
+    .scrabble-tile:active { cursor: grabbing; transform: translateY(2px) scale(0.95); border-bottom-width: 2px !important; }
     .tile-used { opacity: 0.25 !important; pointer-events: none; transform: scale(0.9); }
     .btn-primary-3d {
       background-color: #6366F1 !important;
@@ -60,6 +61,20 @@
     .slot-absent { background: linear-gradient(145deg, #94A3B8, #64748B) !important; color: #FFFFFF !important; border: 2px solid #475569 !important; }
     @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
     .animate-shake { animation: shake 0.35s ease; }
+    /* 強制單行橫向捲動，防止長單字折行 */
+    .board-scroll-container {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      max-width: 100%;
+      padding: 6px 4px;
+      gap: 6px;
+      justify-content: flex-start;
+      scrollbar-width: thin;
+    }
+    @media(min-width: 380px) {
+      .board-scroll-container { justify-content: center; }
+    }
   </style>
 </head>
 <body class="bg-pastel-mesh min-h-screen flex flex-col items-center">
@@ -166,7 +181,7 @@
       <div id="tries-display" class="flex gap-0.5 text-sm">❤️❤️</div>
     </div>
 
-    <!-- 語境線索卡 (已升級上下分層排版，防文字被遮擋) -->
+    <!-- 語境線索卡 -->
     <section class="glass-card rounded-2xl p-3.5 shadow-md">
       <div class="flex items-center justify-between mb-1">
         <span id="word-pos" class="bg-indigo-100 text-indigo-800 font-scrabble font-bold text-xs px-2.5 py-0.5 rounded-md">adj.</span>
@@ -177,7 +192,6 @@
         <p id="sentence-en" class="font-scrabble text-sm text-slate-800 leading-relaxed"></p>
         <p id="sentence-zh" class="text-xs text-slate-600 mt-1"></p>
       </div>
-      <!-- 改為上下兩行排版，徹底解決擠壓遮擋問題 -->
       <div class="flex flex-col gap-2 text-xs bg-slate-100 rounded-xl p-2.5">
         <div class="text-slate-700 leading-snug"><span class="text-indigo-600 font-bold">【搭配】</span><span id="collocation-hint"></span></div>
         <div class="flex justify-end pt-1 border-t border-slate-200">
@@ -193,13 +207,19 @@
       <div id="phrase-context" class="hidden text-xs font-scrabble font-bold tracking-wider text-indigo-800 bg-indigo-100 border border-indigo-300 px-3 py-0.5 rounded-full mb-2">
         PHRASE: <span id="phrase-mask-text"></span>
       </div>
-      <div id="board-slots" class="flex flex-wrap justify-center gap-1.5 px-1"></div>
+      
+      <!-- 棋盤格單行捲動容器 -->
+      <div class="w-full overflow-x-auto py-1">
+        <div id="board-slots" class="board-scroll-container"></div>
+      </div>
+
       <div id="feedback-msg" class="h-5 mt-1 text-xs font-bold text-center text-rose-600"></div>
     </section>
 
+    <!-- 玩家手牌槽 -->
     <section class="glass-card rounded-2xl p-3">
       <div class="flex justify-between items-center mb-2 px-1">
-        <span class="text-[11px] text-slate-500 font-bold">點擊字母磚填入 · 點擊上方棋盤格退回</span>
+        <span class="text-[11px] text-slate-500 font-bold">💡 點擊或拖曳磚塊排字 · 點棋盤格退回</span>
         <div class="flex gap-1.5">
           <button onclick="shuffleRack()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg">🔀 洗牌</button>
           <button onclick="clearBoard()" class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg">🧹 清空</button>
@@ -306,6 +326,7 @@ let correctCount = 0;
 let timerInterval = null;
 let timeLeft = 40;
 let sessionHistory = [];
+let idCounter = 1;
 let isMuted = false;
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -484,8 +505,8 @@ function loadQuestion() {
   }
 
   const allChars = [...targetLetters, ...chosenExtras].sort(() => Math.random() - 0.5);
-  rackTiles = allChars.map((ch, idx) => ({
-    id: `tile-${idx}`, char: ch, score: SCRABBLE_SCORES[ch] || 1, used: false
+  rackTiles = allChars.map((ch) => ({
+    id: `tile-${idCounter++}`, char: ch, score: SCRABBLE_SCORES[ch] || 1, used: false
   }));
 
   renderClueCard();
@@ -529,26 +550,49 @@ function renderClueCard() {
   audioBtn.innerHTML = `<span>🔊 聽語境朗讀 (-25 分)</span>`;
 }
 
+// 渲染單行捲動棋盤格（支援拖曳放置與點擊退回）
 function renderBoard() {
   const container = document.getElementById('board-slots');
   container.innerHTML = '';
   const len = targetLetters.length;
-  const sizeClass = len > 9 ? 'w-8 h-10 text-base' : (len > 7 ? 'w-9 h-11 text-lg' : 'w-11 h-12 text-xl');
+  const sizeClass = len > 10 ? 'w-9 h-11 text-base' : 'w-11 h-12 text-xl';
 
   for (let i = 0; i < len; i++) {
-    const slot = document.createElement('button');
+    const slot = document.createElement('div');
     slot.id = `slot-${i}`;
     const tile = boardState[i];
     const bonus = bonusMultipliers[i];
 
-    let styleClass = 'bg-white/90 border-2 border-dashed border-slate-400 text-slate-700';
-    if (lockedCorrect[i]) styleClass = 'slot-correct';
-    else if (tile) styleClass = 'scrabble-tile';
-    else if (bonus === 'DL') styleClass = 'bg-sky-100 border-2 border-sky-400 text-sky-800';
-    else if (bonus === 'TL') styleClass = 'bg-indigo-100 border-2 border-indigo-400 text-indigo-800';
+    let styleClass = 'bg-white/90 border-2 border-dashed border-slate-400 text-slate-700 shrink-0';
+    if (lockedCorrect[i]) styleClass = 'slot-correct shrink-0';
+    else if (tile) styleClass = 'scrabble-tile shrink-0';
+    else if (bonus === 'DL') styleClass = 'bg-sky-100 border-2 border-sky-400 text-sky-800 shrink-0';
+    else if (bonus === 'TL') styleClass = 'bg-indigo-100 border-2 border-indigo-400 text-indigo-800 shrink-0';
 
     slot.className = `relative ${sizeClass} rounded-xl font-scrabble font-bold flex items-center justify-center shadow-sm ${styleClass}`;
+    
+    // 點擊空格退回字母
     slot.onclick = () => removeTileFromSlot(i);
+
+    // 支援拖曳放置 (Drop)
+    slot.ondragover = (e) => e.preventDefault();
+    slot.ondrop = (e) => {
+      e.preventDefault();
+      const tileId = e.dataTransfer.getData('text/plain');
+      const tileObj = rackTiles.find(t => t.id === tileId);
+      if (tileObj && !tileObj.used) {
+        if (boardState[i] !== null && !lockedCorrect[i]) {
+          boardState[i].used = false;
+        }
+        if (!lockedCorrect[i]) {
+          tileObj.used = true;
+          boardState[i] = tileObj;
+          playTone('tap');
+          renderBoard();
+          renderRack();
+        }
+      }
+    };
 
     if (tile) {
       slot.innerHTML = `<span>${tile.char}</span><span class="absolute bottom-0.5 right-1 text-[9px] opacity-75">${tile.score}</span>`;
@@ -559,28 +603,35 @@ function renderBoard() {
   }
 }
 
+// 渲染手牌 (支援拖曳 Drag 與 點擊 Click)
 function renderRack() {
   const container = document.getElementById('tile-rack');
   container.innerHTML = '';
-  rackTiles.forEach((tile, idx) => {
-    const btn = document.createElement('button');
+  rackTiles.forEach((tile) => {
+    const btn = document.createElement('div');
+    btn.draggable = !tile.used;
     btn.className = `scrabble-tile w-11 h-12 rounded-xl font-scrabble font-bold text-xl relative flex items-center justify-center ${tile.used ? 'tile-used' : ''}`;
     btn.innerHTML = `<span>${tile.char}</span><span class="absolute bottom-0.5 right-1 text-[9px] opacity-75">${tile.score}</span>`;
-    btn.onclick = () => placeTileInNextSlot(idx);
+    
+    // 點擊填入
+    btn.onclick = () => {
+      if (tile.used) return;
+      const emptyIdx = boardState.findIndex(s => s === null);
+      if (emptyIdx === -1) return;
+      playTone('tap');
+      tile.used = true;
+      boardState[emptyIdx] = tile;
+      renderBoard();
+      renderRack();
+    };
+
+    // 拖曳開始
+    btn.ondragstart = (e) => {
+      e.dataTransfer.setData('text/plain', tile.id);
+    };
+
     container.appendChild(btn);
   });
-}
-
-function placeTileInNextSlot(rackIdx) {
-  const tile = rackTiles[rackIdx];
-  if (tile.used) return;
-  const emptyIdx = boardState.findIndex(s => s === null);
-  if (emptyIdx === -1) return;
-  playTone('tap');
-  tile.used = true;
-  boardState[emptyIdx] = tile;
-  renderBoard();
-  renderRack();
 }
 
 function removeTileFromSlot(slotIdx) {
