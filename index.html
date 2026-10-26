@@ -21,7 +21,7 @@
 
   <style>
     :root { color-scheme: light only; }
-    * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; box-sizing: border-box; }
+    * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; box-sizing: border-box; }
     html, body { margin: 0; padding: 0; width: 100%; min-height: 100%; background-color: #EDF2F7 !important; color: #1E293B !important; font-family: 'Quicksand', 'Noto Sans TC', sans-serif; overflow-x: hidden; }
     .font-scrabble { font-family: 'Fredoka', 'Quicksand', sans-serif; }
     .bg-pastel-mesh {
@@ -39,11 +39,10 @@
       border-bottom: 4px solid #D97706 !important;
       border-right: 2px solid #D97706 !important;
       box-shadow: 0 4px 8px rgba(180, 83, 9, 0.18);
-      cursor: pointer;
+      cursor: grab;
       transition: transform 0.12s ease, opacity 0.15s ease;
-      touch-action: none;
     }
-    .scrabble-tile:active { transform: translateY(2px) scale(0.95); border-bottom-width: 2px !important; }
+    .scrabble-tile:active { cursor: grabbing; transform: translateY(2px) scale(0.95); border-bottom-width: 2px !important; }
     .tile-used { opacity: 0.25 !important; pointer-events: none; transform: scale(0.9); }
     .btn-primary-3d {
       background-color: #6366F1 !important;
@@ -62,10 +61,6 @@
     .slot-absent { background: linear-gradient(145deg, #94A3B8, #64748B) !important; color: #FFFFFF !important; border: 2px solid #475569 !important; }
     @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
     .animate-shake { animation: shake 0.35s ease; }
-    .dragging-clone {
-      position: fixed; pointer-events: none; z-index: 9999;
-      opacity: 0.9; transform: scale(1.1); transition: none !important;
-    }
   </style>
 </head>
 <body class="bg-pastel-mesh min-h-screen flex flex-col items-center">
@@ -541,7 +536,7 @@ function renderClueCard() {
   audioBtn.innerHTML = `<span>🔊 聽語境朗讀 (-25 分)</span>`;
 }
 
-// 渲染智慧單行置中棋盤格（完美支援手機觸控拖曳 + 點擊）
+// 渲染棋盤格（支援點擊退回與接收拖曳放置）
 function renderBoard() {
   const container = document.getElementById('board-slots');
   container.innerHTML = '';
@@ -578,7 +573,7 @@ function renderBoard() {
   }
 }
 
-// 渲染手牌 (完美支援手機 Touch 觸控拖曳滑動放置)
+// 渲染手牌 (完美兼顧 點擊自動填入 + 手指順暢拖曳)
 function renderRack() {
   const container = document.getElementById('tile-rack');
   container.innerHTML = '';
@@ -587,9 +582,12 @@ function renderRack() {
     btn.className = `scrabble-tile w-11 h-12 rounded-xl font-scrabble font-bold text-xl relative flex items-center justify-center ${tile.used ? 'tile-used' : ''}`;
     btn.innerHTML = `<span>${tile.char}</span><span class="absolute bottom-0.5 right-1 text-[9px] opacity-75">${tile.score}</span>`;
     
-    // 點擊填入
+    let isMoving = false;
+    let startX = 0, startY = 0;
+
+    // 點擊填入 (Tap to place)
     btn.onclick = () => {
-      if (tile.used) return;
+      if (isMoving || tile.used) return;
       const emptyIdx = boardState.findIndex(s => s === null);
       if (emptyIdx === -1) return;
       playTone('tap');
@@ -599,84 +597,55 @@ function renderRack() {
       renderRack();
     };
 
-    // 觸控與滑鼠拖曳邏輯 (Touch & Mouse Drag Support)
-    let isDragging = false;
-    let clone = null;
-
-    const startDrag = (clientX, clientY) => {
+    // 觸控與滑鼠拖曳邏輯 (Touch & Mouse Drag Drop)
+    const onTouchStart = (e) => {
       if (tile.used) return;
-      isDragging = true;
-      clone = btn.cloneNode(true);
-      clone.className += ' dragging-clone';
-      clone.style.width = `${btn.offsetWidth}px`;
-      clone.style.height = `${btn.offsetHeight}px`;
-      document.body.appendChild(clone);
-      moveClone(clientX, clientY);
-    };
+      isMoving = false;
+      const touch = e.touches ? e.touches[0] : e;
+      startX = touch.clientX;
+      startY = touch.clientY;
 
-    const moveClone = (clientX, clientY) => {
-      if (!clone) return;
-      clone.style.left = `${clientX - clone.offsetWidth / 2}px`;
-      clone.style.top = `${clientY - clone.offsetHeight / 2}px`;
-    };
+      const onMove = (ev) => {
+        const t = ev.touches ? ev.touches[0] : ev;
+        if (Math.abs(t.clientX - startX) > 6 || Math.abs(t.clientY - startY) > 6) {
+          isMoving = true;
+        }
+      };
 
-    const endDrag = (clientX, clientY) => {
-      if (!isDragging) return;
-      isDragging = false;
-      if (clone) { clone.remove(); clone = null; }
-
-      // 檢查放開時座標是否落在某個棋盤格內
-      const slots = document.querySelectorAll('#board-slots > div');
-      for (let i = 0; i < slots.length; i++) {
-        const rect = slots[i].getBoundingClientRect();
-        if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
-          if (!lockedCorrect[i]) {
-            if (boardState[i] !== null) {
-              boardState[i].used = false;
+      const onEnd = (ev) => {
+        const t = ev.changedTouches ? ev.changedTouches[0] : ev;
+        if (isMoving) {
+          // 檢查放開時是否落在棋盤格上
+          const slots = document.querySelectorAll('#board-slots > div');
+          for (let i = 0; i < slots.length; i++) {
+            const rect = slots[i].getBoundingClientRect();
+            if (t.clientX >= rect.left && t.clientX <= rect.right && t.clientY >= rect.top && t.clientY <= rect.bottom) {
+              if (!lockedCorrect[i]) {
+                if (boardState[i] !== null) boardState[i].used = false;
+                tile.used = true;
+                boardState[i] = tile;
+                playTone('tap');
+                renderBoard();
+                renderRack();
+                break;
+              }
             }
-            tile.used = true;
-            boardState[i] = tile;
-            playTone('tap');
-            renderBoard();
-            renderRack();
-            return;
           }
         }
-      }
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend', onEnd);
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+      window.addEventListener('touchmove', onMove);
+      window.addEventListener('touchend', onEnd);
     };
 
-    // 滑鼠事件
-    btn.onmousedown = (e) => {
-      e.preventDefault();
-      startDrag(e.clientX, e.clientY);
-      const onMouseMove = (ev) => moveClone(ev.clientX, ev.clientY);
-      const onMouseUp = (ev) => {
-        endDrag(ev.clientX, ev.clientY);
-        window.removeEventListener('mousemove', onMouseMove);
-        window.removeEventListener('mouseup', onMouseUp);
-      };
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
-    };
-
-    // 手機觸控事件 (Touch Events)
-    btn.ontouchstart = (e) => {
-      e.preventDefault();
-      const touch = e.touches[0];
-      startDrag(touch.clientX, touch.clientY);
-      const onTouchMove = (ev) => {
-        const t = ev.touches[0];
-        moveClone(t.clientX, t.clientY);
-      };
-      const onTouchEnd = (ev) => {
-        const t = ev.changedTouches[0];
-        endDrag(t.clientX, t.clientY);
-        window.removeEventListener('touchmove', onTouchMove);
-        window.removeEventListener('touchend', onTouchEnd);
-      };
-      window.addEventListener('touchmove', onTouchMove);
-      window.addEventListener('touchend', onTouchEnd);
-    };
+    btn.onmousedown = onTouchStart;
+    btn.ontouchstart = onTouchStart;
 
     container.appendChild(btn);
   });
